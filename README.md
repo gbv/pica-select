@@ -12,9 +12,9 @@ Es empfiehlt sich, Perl-Module vorab als Debian-Paket zu installieren (als root)
 
 Der Dienst kann grundsätzlich als beliebiger Nutzer laufen, es empfiehlt sich aber ein spezieller Account:
 
-    sudo adduser --home /srv/sru-select sru-select --disabled-password
-    sudo -iu sru-select
-    git clone --bare https://github.com/gbv/sru-select.git .git
+    sudo adduser --home /srv/pica-select pica-select --disabled-password
+    sudo -iu pica-select
+    git clone --bare https://github.com/gbv/pica-select.git .git
     git config --unset core.bare
     git checkout
 
@@ -26,9 +26,9 @@ Der Dienst kann nun testweise auf Port :5000 gestartet werden:
 
     make run
 
-Zur dauerhaften Installation als Service gibt es verschiedene Möglichkeiten, diesen Aufruf dauerhaft, d.h. beim Booten und nach Absturz des Dienst, einzurichten. Die Datei `sru-select.service` enthält ein Beispiel für Systemd. Die Datei setzt vorraus, dass der Coverdienst in `/srv/sru-select` als Benutzer `sru-select` installiert ist (muss je nach Installation angepasst werden):
+Zur dauerhaften Installation als Service gibt es verschiedene Möglichkeiten, diesen Aufruf dauerhaft, d.h. beim Booten und nach Absturz des Dienst, einzurichten. Die Datei `pica-select.service` enthält ein Beispiel für Systemd. Die Datei setzt vorraus, dass der Coverdienst in `/srv/pica-select` als Benutzer `pica-select` installiert ist (muss je nach Installation angepasst werden):
 
-    sudo cp sru-select.service /etc/systemd/system
-    sudo systemctl enable sru-select
-    sudo systemctl start sru-select
+    sudo cp pica-select.service /etc/systemd/system
+    sudo systemctl enable pica-select
+    sudo systemctl start pica-select
 

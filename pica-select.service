@@ -4,11 +4,11 @@ After=network.target
  
 [Service]
 Type=simple
-User=sru-select
-Group=sru-select
+User=pica-select
+Group=pica-select
 ExecStart=starman --workers 5 --port 7007
 Restart=always
-WorkingDirectory=/srv/sru-select/
+WorkingDirectory=/srv/pica-select/
 Nice=19
 LimitNOFILE=16384
  
