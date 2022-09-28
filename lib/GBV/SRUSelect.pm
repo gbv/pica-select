@@ -5,7 +5,7 @@ use parent 'Plack::Component';
 use Plack::Request;
 use Catmandu::Importer::SRU;
 use Try::Tiny;
-use PICA::Data qw(pica_writer pica_path);
+use PICA::Data qw(pica_writer pica_path pica_value);
 use JSON;
 use Encode::Unicode qw(encode);
 
@@ -47,11 +47,7 @@ sub call {
         # returns an iterator of PICA records
         my $records = $self->query( $db, $cql );
 
-        my $res = $records->map(
-            sub {
-                bless $_[0], 'PICA::Data';
-            }
-        )->to_array;
+        my $res = $records->to_array;
 
         if ( $format eq 'json' ) {
             $response->body( json($res) );
@@ -78,7 +74,7 @@ sub call {
             $response->header( 'Content-Type' => 'text/plain' );
             my @rows;
             for my $record (@$res) {
-                my @row = map { $record->value($_) } @path;
+                my @row = map { pica_value( $record, $_ ) } @path;
                 push @rows, join( "\t", @row ) . "\n";
             }
 
