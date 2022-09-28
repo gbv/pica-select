@@ -2,7 +2,7 @@ deps:
 	cpanm -l local --skip-satisfied --installdeps --notest .
 
 run:
-	plackup -r -Ilocal/lib/perl5/
+	plackup -r
 
 test:
 	prove -lv -Ilocal/lib/perl5

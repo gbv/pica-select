@@ -1,10 +1,12 @@
 use v5.20;
 
+use lib 'lib';
+use lib 'local/lib/perl5';
+
 use Plack::Builder;
 use Plack::App::File;
 use Plack::Middleware::CrossOrigin;
 
-use lib './lib';
 use GBV::SRUSelect;
 
 my $app = GBV::SRUSelect->new(
