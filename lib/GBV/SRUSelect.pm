@@ -41,8 +41,6 @@ sub call {
 
     try {
         die "Format not supported" if $format !~ /^(json|pp|norm|tsv)$/;
-        if ( $format eq 'pp' ) {
-        }
 
         # returns an iterator of PICA records
         my $records = $self->query( $db, $cql );
@@ -50,7 +48,17 @@ sub call {
         my $res = $records->to_array;
 
         if ( $format eq 'json' ) {
-            $response->body( json($res) );
+
+            # unblessed
+            $response->body(
+                json(
+                    [
+                        map {
+                            { %$_ }
+                        } @$res
+                    ]
+                )
+            );
         }
         elsif ( $format eq 'pp' || $format eq 'norm' ) {
             $format = $format eq 'pp' ? 'plain' : 'plus';
