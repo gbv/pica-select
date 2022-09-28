@@ -1,0 +1,16 @@
+[Unit]
+Description=PICA-Select
+After=network.target
+ 
+[Service]
+Type=simple
+User=sru-select
+Group=sru-select
+ExecStart=starman --workers 5 --port 7007
+Restart=always
+WorkingDirectory=/srv/sru-select/
+Nice=19
+LimitNOFILE=16384
+ 
+[Install]
+WantedBy=multi-user.target
