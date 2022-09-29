@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PICA Select</title>
+    <meta name="description" content="PICA-Datenbankabfragen per Webformular">
+    <link href="entireframework.min.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>SRU Select</h1>
+      <p>
+        Mit diesem Webformular können Daten aus PICA-Datenbanken abgefragt werden.
+        Datenbank ist derzeit <a href="https://uri.gbv.de/database/opac-de-627">K10plus</a> 
+        via <a href="https://wiki.k10plus.de/display/K10PLUS/SRU">SRU-API</a>. Die
+        Anzahl von Datensätzen ist zum Testen auf 10 begrenzt.
+      </p>
+    </div>
+    <div id="app"></div>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

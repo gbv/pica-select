@@ -9,6 +9,8 @@ use Plack::Middleware::CrossOrigin;
 
 use GBV::SRUSelect;
 
+my $client = "dist";
+
 my $app = GBV::SRUSelect->new(
     databases => {
         'opac-de-627' => {
@@ -22,13 +24,11 @@ my $app = GBV::SRUSelect->new(
 );
 
 builder {
+    enable 'CrossOrigin', origins => '*';
     enable "Static",
         path         => sub { s!/?$}!/index.html! },
-        root         => 'client',
+        root         => $client,
         pass_through => 1;
-    mount '/' => Plack::App::File->new(root => 'client')->to_app;
-    mount "/select" => builder {
-        enable 'CrossOrigin', origins => '*';
-        $app;
-    };
+    mount '/' => Plack::App::File->new(root => $client)->to_app;
+    mount "/select" => $app;
 }

@@ -1,10 +1,12 @@
 # pica-select
 
-> Webformular zur Abfrage von Daten aus PICA-Datenbanken
+> API und Webformular zur Abfrage von Daten aus PICA-Datenbanken
 
-Siehe <https://deutsche-nationalbibliothek-dnblab-dnb-testabfrage-x7jfa9.streamlitapp.com/>
+Inspiriert von <https://deutsche-nationalbibliothek-dnblab-dnb-testabfrage-x7jfa9.streamlitapp.com/> und dem Excel-Export Plugin von WinIBW3.
 
 ## Installation und Konfiguration
+
+### Backend
 
 Es empfiehlt sich, Perl-Module vorab als Debian-Paket zu installieren (als root). Zumindest `starman` sollte als Systempaket installiert sein:
 
@@ -32,3 +34,28 @@ Zur dauerhaften Installation als Service gibt es verschiedene Möglichkeiten, di
     sudo systemctl enable pica-select
     sudo systemctl start pica-select
 
+## Client
+
+## Project Setup
+
+```sh
+npm install
+```
+
+### Compile and Hot-Reload for Development
+
+```sh
+npm run dev
+```
+
+### Compile and Minify for Production
+
+```sh
+npm run build
+```
+
+### Lint with [ESLint](https://eslint.org/)
+
+```sh
+npm run lint
+```

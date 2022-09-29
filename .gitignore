@@ -1,5 +1,10 @@
 *.bak
+*.log
+
 config.local.json
 local/
-.cpanm/
-access.log
+.cpanm
+node_modules
+
+.DS_Store
+dist
