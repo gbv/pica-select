@@ -32,7 +32,7 @@ sub call {
         return $response->finalize;
     }
 
-    my $cql    = $query->{cql};
+    my $cql    = $query->{query};
     my $db     = $query->{db};
     my $format = $query->{format} || 'pp';    # csv, tsv, pp, norm
     my $select = $query->{select};
