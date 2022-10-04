@@ -1,22 +1,83 @@
 <script setup>
-defineProps({
+import { ref, onMounted } from 'vue'
+
+const props = defineProps({
   api: {
     type: String,
     required: true
+  },
+  modelValue: { // the result
+    type: Object,
+    default: () => ({})
   }
 })
 
-import { ref } from 'vue'
+const emit = defineEmits(['update:modelValue'])
 
+// from API status
 const databases = ref({})
+
+// query and/or form parameters
 const dbkey = ref(undefined)
-const format = ref("")
+const format = ref("pp")
+const query = ref("")
+const select = ref("")
 const browser = ref(true)
-const splitlevels = ref(true)
+const split = ref(true)
+
+onMounted(() => {
+  const url = `${props.api}/status`
+  fetch(url)
+    .then(res => {
+      if (res.ok) {
+        try { return res.json() } catch(e) { }
+      }
+      return { error: "API nicht erreichbar!" }
+    })
+    .then(res => {
+      // TODO: disable form
+      databases.value = res.databases || {}
+      dbkey.value = res.default_database
+      if (res.error) {
+        emit("update:modelValue", { error: { message: res.error }, url })
+      }
+    })
+})
+
+// TODO: move to parent component and do form validation?
+function submit(e) {
+  const params = {
+    db: dbkey.value,
+    query: query.value,
+    format: format.value,
+    select: select.value,
+    split: split.value,
+  }
+  const url = `${props.api}/select?` + new URLSearchParams(params)
+  fetch(url)
+    .then(async res => {
+      if (!res.ok) {
+        try {
+          throw await res.json()
+        } catch(e) {
+          throw { message: "Malformed API response", status: 500 }
+        }
+      }        
+      return params.format == "json" ? res.json() : res.text()
+    })
+    .then(data => {
+      // TODO: table or pica
+      const pica = data
+      emit("update:modelValue", { url, params, pica })
+    })
+    .catch(error => {
+      emit("update:modelValue", { url, params, error })
+    })
+}
 </script>
 
 <template>    
-  <form :action="`${api}/select`" method="get">
+  <form :action="`${api}/select`" method="get" v-on:submit.prevent="submit">
     <table>
       <tr>
         <th>
@@ -44,7 +105,7 @@ const splitlevels = ref(true)
         </th>
         <td class="row align-items-top">
           <div class="col-sm-8">
-            <input type="text" name="query" class="form-control" style="width:100%"/>
+            <input type="text" name="query" class="form-control" style="width:100%" v-model="query"/>
             <div class="form-text">
               in
               <a href="https://wiki.k10plus.de/display/K10PLUS/SRU">SRU CQL-Syntax</a>
@@ -55,8 +116,8 @@ const splitlevels = ref(true)
           </div>
           <div class="col-auto">
             <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" role="switch" id="splitlevels" v-model="splitlevels">
-              <label class="form-check-label" for="splitlevels">Exemplare einzeln</label>
+              <input class="form-check-input" type="checkbox" role="switch" id="split" v-model="split">
+              <label class="form-check-label" for="split">Exemplare einzeln</label>
             </div>
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" role="switch" id="browser" v-model="browser">
@@ -143,19 +204,6 @@ const splitlevels = ref(true)
   </form>
 </template>
 
-<script>
-export default {
-  mounted() {
-    const statusEndpoint = this.api + "/select"
-    fetch(statusEndpoint)
-      .then(response => response.json())
-      .then(res => {
-        this.databases = res.databases
-        this.dbkey = res.default_database
-      })
-  }
-}
-</script>
 
 <style scoped>
 th {
@@ -165,7 +213,7 @@ th {
 }
 </style>
 
-<style scoped>
+<!--style scoped>
 code {
   color: #d63384;
   word-wrap: break-word;
@@ -187,54 +235,4 @@ input, label {
 form {
   padding: 0.5em 0em 0em 0em;
 }
-.msg {
-  background: #def;
-  border-color: #59d;
-}
-.msg.valid {
-  border-color: #2d2;
-  background: #dfd;
-}
-.msg.invalid {
-  border-color: #e44;
-  background: #fdd;
-}
-
-/* Boostrap-compatible */
-/*
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  margin-top: -1rem;
-  margin-right: -0.5rem;
-  margin-left: -0.5rem;
-}
-.align-items-center {
-  align-items: center!important;
-}
-.row>* {
-  padding-right: 0.5rem;
-  padding-left: 0.5rem;
-  margin-top: 1rem;
-}
-.col-auto {
-  flex: 0 0 auto;
-  width: auto;
-}
-.col-sm-7 {
-  flex: 0 0 auto;
-  width: 58.3%;
-}
-.form-control {
-  width: 100%;
-  border-radius: 0.375rem;
-}
-.col-form-label {
-}
-.form-text {
-  margin-top: 0.25rem;
-  font-size: .875em;
-  color: #6c757d;
-}
-*/
-</style>
+</style-->
