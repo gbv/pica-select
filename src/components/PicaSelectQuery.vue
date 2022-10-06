@@ -1,12 +1,12 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 
 const props = defineProps({
   api: {
     type: String,
     required: true
   },
-  modelValue: { // the result
+  modelValue: { // result
     type: Object,
     default: () => ({})
   }
@@ -14,7 +14,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-// from API status
+// is set via API endpoint /status
 const databases = ref({})
 
 // query and/or form parameters
@@ -22,15 +22,20 @@ const dbkey = ref(undefined)
 const format = ref("pp")
 const query = ref("")
 const select = ref("")
+const reduce = ref("")
 const browser = ref(true)
 const split = ref(true)
+const delimit = ref(true)
+const delimiter = ref("; ")
+
+const tabular = computed(() => format.value.match(/^(csv|tsv|ods)$/))
 
 onMounted(() => {
   const url = `${props.api}/status`
   fetch(url)
     .then(res => {
       if (res.ok) {
-        try { return res.json() } catch(e) { }
+        try { return res.json() } catch { } // eslint-disable-line no-empty 
       }
       return { error: "API nicht erreichbar!" }
     })
@@ -45,30 +50,46 @@ onMounted(() => {
 })
 
 // TODO: move to parent component and do form validation?
-function submit(e) {
+function submit() {
+  const tabular = /^(csv|tsv|ods)$/.test(format.value) ? format.value : null
   const params = {
     db: dbkey.value,
     query: query.value,
     format: format.value,
-    select: select.value,
+    reduce: reduce.value,
     split: split.value,
   }
+  if (tabular) {
+    params.select = select.value
+  }
   const url = `${props.api}/select?` + new URLSearchParams(params)
+  if (!browser.value) {
+    window.location.href = url
+    return
+  } 
   fetch(url)
     .then(async res => {
       if (!res.ok) {
+        var error
         try {
-          throw await res.json()
-        } catch(e) {
-          throw { message: "Malformed API response", status: 500 }
+          error = await res.json()
+        } catch {
+          error = { message: "Malformed API response", status: 500 }
         }
+        throw error
       }        
       return params.format == "json" ? res.json() : res.text()
     })
     .then(data => {
-      // TODO: table or pica
-      const pica = data
-      emit("update:modelValue", { url, params, pica })
+      const result = { url, params }
+      if (tabular) {
+
+        // TODO: parse tsv/csv
+        result.table = data
+      } else {        
+        result.pica = data
+      }
+      emit("update:modelValue", result)
     })
     .catch(error => {
       emit("update:modelValue", { url, params, error })
@@ -88,8 +109,8 @@ function submit(e) {
             <div class="col-auto">
               <select name="database" class="form-control" v-model="dbkey">
                 <option disabled value="">Bitte auswählen</option>
-                <option v-for="(db,key) of databases" :value="key">
-                  {{db.title.de || key}}
+                <option v-for="(db,key) of databases" :value="key" :key="key">
+                  {{db.title.de || db.title.en || key}}
                 </option>
               </select>        
             </div>
@@ -109,6 +130,7 @@ function submit(e) {
             <div class="form-text">
               in
               <a href="https://wiki.k10plus.de/display/K10PLUS/SRU">SRU CQL-Syntax</a>
+              z.B. <code @click.left="query='pica.isb=978-3-89401-810-8'">pica.isb=978-3-89401-810-8</code>
             </div>
           </div>
           <div class="col-auto">
@@ -141,7 +163,7 @@ function submit(e) {
           </div>
           <div class="col-auto">
             <div class="form-text">
-              noch nicht umgesetzt
+              NOCH NICHT UMGESETZT
             </div>
           </div>
         </td>
@@ -152,23 +174,7 @@ function submit(e) {
         </th>
         <td class="row align-items-center">
           <div class="col-auto">
-            <div class="form-check form-check-inline">
-              <label for="format-csv" class="form-check-label">Tabelle</label>
-            </div>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="radio" name="format" id="format-csv" value="csv" v-model="format">
-              <label class="form-check-label" for="format-csv">CSV</label>
-            </div>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="radio" name="format" id="format-tsv" value="tsv" v-model="format">
-              <label class="form-check-label" for="format-tsv">TSV</label>
-            </div>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="radio" name="format" id="format-ods" value="ods" v-model="format">
-              <label class="form-check-label" for="format-ods">Spreadsheet</label>
-            </div>
-          </div>
-          <div class="col-auto">
+            <div class="input-group">
             <div class="form-check form-check-inline">
               <label for="format-pp" class="form-check-label">PICA+</label>
             </div>
@@ -184,6 +190,31 @@ function submit(e) {
               <input class="form-check-input" type="radio" name="format" id="format-json" value="json" v-model="format">
               <label class="form-check-label" for="format-json">JSON</label>
             </div>
+            </div>
+          </div>
+          <div class="col-auto">
+            <div class="input-group">
+              <div class="form-check form-check-inline">
+                <label for="format-csv" class="form-check-label">Tabelle</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="format" id="format-csv" value="csv" v-model="format" disabled>
+                <label class="form-check-label" for="format-csv">CSV</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="format" id="format-tsv" value="tsv" v-model="format">
+                <label class="form-check-label" for="format-tsv">TSV</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="format" id="format-ods" value="ods" v-model="format" disabled>
+                <label class="form-check-label" for="format-ods">Spreadsheet</label>
+              </div>
+              <input class="form-check-input" type="checkbox" id="format-delimit" name="delimit" v-model="delimit">
+              <label class="form-check-label" for="format-delimit">
+                Unterfelder trennen mit:
+              </label>
+              <input type="text" name="delimiter" class="form-control" v-model="delimiter" style="width:4em;"/>
+            </div>
           </div>
         </td>
       </tr>
@@ -191,13 +222,18 @@ function submit(e) {
         <th>
           <label>Auswahl</label>
         </th>
-        <td v-if="format.match(/^(csv|tsv|ods)$/)">
-           TODO:
-           Unterfelder, Templates, Standardtabellen für {{format}}
+        <td v-if="tabular">
+           <textarea v-model="select" placeholder="Ein Feld pro Zeile" class="form-control"></textarea>
+           <div class="form-text">               
+            Syntax pro Zeile <code>Name: Feld $codes</code>
+            TODO: Standardtabellen
+           </div>
         </td>
         <td v-else>
-          TODO:
-          PICA-Feldauswahl für {{format}} Serialisierung
+          <input type="text" class="form-control" style="width:100%" v-model="reduce" />
+          <div class="form-text">
+              Einzelne PICA+ Felder in <a href="https://format.gbv.de/query/picapath">PICA Path</a> Syntax z.B. <code>003@, 021A, ...</code>
+          </div>
         </td>
       </tr>
     </table>
@@ -210,6 +246,10 @@ th {
   padding-right: 1rem;
   padding-top: 0.5rem;
   vertical-align: top;
+}
+.input-group {
+    border: 1px solid #aaa;
+    padding: 0.3rem;
 }
 </style>
 

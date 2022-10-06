@@ -2,7 +2,7 @@
 
 > API und Webformular zur Abfrage von Daten aus PICA-Datenbanken
 
-Inspiriert von <https://deutsche-nationalbibliothek-dnblab-dnb-testabfrage-x7jfa9.streamlitapp.com/> und dem Excel-Export Plugin von WinIBW3.
+Inspiriert von <https://deutsche-nationalbibliothek-dnblab-dnb-testabfrage-x7jfa9.streamlitapp.com/> und dem Excel-Export Plugin von WinIBW3 (siehe <https://wiki.k10plus.de/display/K10PLUS/Excel-Tabelle+erstellen>).
 
 ## Installation und Konfiguration
 

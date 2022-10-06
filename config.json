@@ -22,5 +22,11 @@
       "srubase": "https://services.dnb.de/sru/dnb"
     }
   },
-  "default_database": "opac-de-627"
+  "default_database": "opac-de-627",
+  "selections": [
+    { "Jahr": "001@ $a" },
+    { "ISSN": "004A $0 +\"= $A\" $0 $A" },
+    { "ISSN": "005A $0" },
+    { "Titel": "021A $a" }
+  ]
 }

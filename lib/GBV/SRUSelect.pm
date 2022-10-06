@@ -3,116 +3,137 @@ use v5.20;
 
 use parent 'Plack::Component';
 use Plack::Request;
+use Plack::Response;
 use Catmandu::Importer::SRU;
 use Try::Tiny;
-use PICA::Data qw(pica_writer pica_path pica_value);
+use PICA::Data qw(pica_writer pica_path pica_value pica_fields);
 use JSON;
 use Encode::Unicode qw(encode);
 
 use Plack::Util::Accessor qw(databases default_database);
 
-use Plack::Response;
-
 sub json {
-    return [ JSON->new->utf8->encode(shift) ];
+    return [ JSON->new->utf8->allow_blessed->encode(shift) ];
+}
+
+use utf8;    # UTF-8 im Quelltext
+
+sub path {
+    my ( $path, $subfields ) = @_;
+    try {
+        $path = pica_path($path);
+    }
+    catch {
+        die [ 400, "Ungültiger PICA Path Ausdruck '$path'" ];
+    };
+    if ( defined $subfields ) {
+        if ( defined $path->subfields ) {
+            die [
+                400, "PICA Patch Ausdruck '$path' darf keine Unterfelder haben"
+              ]
+              if !$subfields;
+        }
+        else {
+            die [ 400, "PICA Patch Ausdruck '$path' fehlen Unterfelder" ]
+              if $subfields;
+        }
+    }
+    return $path;
 }
 
 sub call {
     my ( $self, $env ) = @_;
 
-    my $req   = Plack::Request->new($env);
-    my $query = $req->query_parameters;
+    my $req    = Plack::Request->new($env);
+    my $params = $req->query_parameters;
+    my $debug  = $params->{debug};
 
-    my $response =
+    my $res =
       Plack::Response->new( 200, [ 'Content-Type' => 'application/json' ] );
 
-    # return configuration
-    if ( !$query->keys ) {
-        $response->body( json( {%$self} ) );
-        return $response->finalize;
-    }
-
-    my $cql    = $query->{query};
-    my $db     = $query->{db};
-    my $format = $query->{format} || 'pp';    # csv, tsv, pp, norm
-    my $select = $query->{select};
-
-    my $status = 500;
-
     try {
-        die "Format not supported" if $format !~ /^(json|pp|norm|tsv)$/;
+        my $cql = $params->{query};
+        my $db  = $params->{db};
 
-        # returns an iterator of PICA records
-        my $records = $self->query( $db, $cql );
+        my $format = $params->{format} || 'pp';
+        die "Format not supported" if $format !~ /^(json|pp|norm|tsv|csv|ods)$/;
 
-        my $res = $records->to_array;
+        my $select = $params->{select};
+        $select =~ s/^\s+|\s+$//mg;
+
+        my $records = $self->query( db => $db, cql => $cql );
+
+        # TODO: split records if requested
+
+        if ( my $reduce = $params->{reduce} ) {
+            $reduce =~ s/\s+//mg;
+
+            $reduce  = [ map { path( $_, 0 ) } split /[|,]+/, $reduce ];
+            $records = $records->map(
+                sub {
+                    return pica_fields( $_[0], @$reduce );
+                }
+            );
+        }
+
+        $records = $records->to_array;
+
+        # TODO: Reduktion auf einzelne Felder mit select
+        # TODO: Record separator
 
         if ( $format eq 'json' ) {
-
-            # unblessed
-            $response->body(
-                json(
-                    [
-                        map {
-                            { %$_ }
-                        } @$res
-                    ]
-                )
-            );
+            $res->body( json($records) );
         }
         elsif ( $format eq 'pp' || $format eq 'norm' ) {
             $format = $format eq 'pp' ? 'plain' : 'plus';
             my $body   = "";
             my $writer = pica_writer( $format, \$body );
-            $writer->write($_) for @$res;
-            $response->header( 'Content-Type' => 'text/plain; encoding=UTF-8' );
+            for my $rec (@$records) {
+                $writer->write($rec);
+            }
+            $writer->end;
+            $res->header( 'Content-Type' => 'text/plain; encoding=UTF-8' );
 
-            # TODO: decode UTF-8?
-            $response->body( [$body] );
+            # TODO: decode UTF-8? use iterator instead?
+            $res->body( [$body] );
         }
         elsif ( $format eq 'tsv' ) {
-            die "Bitte Unterfelder angeben" unless $select;
-            $select =~ s/^\s+|\s+$//mg;
-            my @path = map { pica_path($_) } split /,/, $select;
-            for (@path) {
-                die "PICA Path Ausdruck '$_' hat keine Unterfelder!"
-                  unless defined $_->subfields;
-            }
+            die [ 400, "Bitte Unterfelder angeben" ] unless $select;
+            my @path = map { path( $_, 1 ) } split /,/, $select;
 
-            $response->header( 'Content-Type' => 'text/plain' );
+            $res->header( 'Content-Type' => 'text/plain' );
             my @rows;
-            for my $record (@$res) {
+            for my $record (@$records) {
                 my @row = map { pica_value( $record, $_ ) } @path;
                 push @rows, join( "\t", @row ) . "\n";
             }
 
-            $response->body( \@rows );
+            $res->body( \@rows );
         }
-
-        # TODO: to_json
     }
     catch {
         my ( $code, $msg ) = ref $_ ? @$_ : ( 500, $_ );
-        say STDERR $msg;
-        $msg =~ s/ at .+ line .+//sm;    # TODO: keep location in debug mode
-        $response->code($code);
-        $response->body( json( { message => $msg, status => $code } ) );
+        $msg =~ s/ at .+ line .+//sm unless $debug;
+        $res->code($code);
+        $res->body( json( { message => $msg, status => $code } ) );
     };
 
-    return $response->finalize;
+    return $res->finalize;
 }
 
 sub query {
-    my ( $self, $db, $cql ) = @_;
+    my ( $self, %params ) = @_;
 
-    my $limit = 10;
+    my $db = $self->databases->{ $params{db} || $self->{default_database} }
+      or die [ 400, "Unbekannte oder fehlende Datenbank" ];
+
+    my $cql = $params{cql}
+      or die [ 400, "Fehlende CQL-Abfrage" ];
+
+    my $limit = $params{limit};
+    $limit = 10 if !( $limit > 0 ) || $limit > 100;
 
     # TODO: optionally add xpn, user, password...
-
-    $db = $self->databases->{ $db || $self->default_database }
-      or die [ 404, "Unbekannte oder fehlende Datenbank" ];
-
-    die [ 400, "Missing CQL query" ] unless $cql;
 
     return Catmandu::Importer::SRU->new(
         base         => $db->{srubase},

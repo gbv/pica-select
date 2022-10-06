@@ -10,8 +10,6 @@ use Plack::Middleware::CrossOrigin;
 use GBV::SRUSelect;
 use JSON;
 
-my $clientRoot = "dist";
-
 # load configuration
 my %config;
 for (grep { -f $_ } qw(config.local.json config.json)) {
@@ -26,13 +24,13 @@ builder {
     # Client and static pages
     enable "Static",
         path         => sub { s!/?$}!/index.html! },
-        root         => $clientRoot,
+        root         => 'dist',
         pass_through => 1;
-    mount '/' => Plack::App::File->new(root => $clientRoot)->to_app;
+    mount '/' => Plack::App::File->new(root => 'dist')->to_app;
 
     # API endpoints
     mount "/status" => sub {
       [ 200, [ 'Content-Type' => 'application/json' ], [ to_json(\%config) ] ]
     };
-    mount "/select" => GBV::SRUSelect->new(\%config);
+    mount "/select" => GBV::SRUSelect->new(\%config)->to_app;
 }
