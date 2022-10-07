@@ -24,9 +24,9 @@ const query = ref("")
 const select = ref("")
 const reduce = ref("")
 const browser = ref(true)
-const split = ref(true)
-const delimit = ref(true)
-const delimiter = ref("; ")
+const levels = ref("0")
+const delimit = ref(false)
+const separator = ref("; ")
 
 const tabular = computed(() => format.value.match(/^(csv|tsv|ods)$/))
 
@@ -57,10 +57,16 @@ function submit() {
     query: query.value,
     format: format.value,
     reduce: reduce.value,
-    split: split.value,
+    levels: levels.value,
+//    separator: separator.value
   }
   if (tabular) {
     params.select = select.value
+  }
+  for (let key in params) {
+      if (typeof params[key] === 'undefined' || params[key] === "") {
+          delete params[key]
+      }
   }
   const url = `${props.api}/select?` + new URLSearchParams(params)
   if (!browser.value) {
@@ -87,6 +93,14 @@ function submit() {
         // TODO: parse tsv/csv
         result.table = data
       } else {        
+        if (params.format == 'pp') {
+            result.count = data.split("\n").filter(l => l === "").length 
+        } else if (params.format == 'norm') {
+            result.count = data.split("\n").length 
+        } else {
+            result.count = data.length
+        }
+
         result.pica = data
       }
       emit("update:modelValue", result)
@@ -99,6 +113,11 @@ function submit() {
 
 <template>    
   <form :action="`${api}/select`" method="get" v-on:submit.prevent="submit">
+  <div class="form-switch float-end">
+    <input class="form-check-input" type="checkbox" role="switch" id="browser" v-model="browser">
+    <label class="form-check-label" for="browser">im Browser</label>
+  </div>
+  <h2>Abfrage</h2>
     <table>
       <tr>
         <th>
@@ -138,12 +157,11 @@ function submit() {
           </div>
           <div class="col-auto">
             <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" role="switch" id="split" v-model="split">
-              <label class="form-check-label" for="split">Exemplare einzeln</label>
-            </div>
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" role="switch" id="browser" v-model="browser">
-              <label class="form-check-label" for="browser">Ergebnis im Browser</label>
+              <select name="database" class="form-control" v-model="levels">
+                <option value="0">Gesamter Datensatz</option>
+                <option value="01">Lokaldatensätze</option>
+                <option value="012">Exemplare</option>
+              </select>
             </div>
           </div>
         </td>
@@ -175,18 +193,18 @@ function submit() {
         <td class="row align-items-center">
           <div class="col-auto">
             <div class="input-group">
-            <div class="form-check form-check-inline">
-              <label for="format-pp" class="form-check-label">PICA+</label>
+            <div class="form-check-inline">
+              <label for="format-pp" class="form-check-label"><b>PICA+</b></label>
             </div>
-              <div class="form-check form-check-inline">
+              <div class="form-check form-check-inline" @click.left="format='pp'">
               <input class="form-check-input" type="radio" name="format" id="format-pp" value="pp" v-model="format">
               <label class="form-check-label" for="format-pp">Plain</label>
             </div>
-            <div class="form-check form-check-inline">
+            <div class="form-check form-check-inline" @click.left="format='norm'">
               <input class="form-check-input" type="radio" name="format" id="format-norm" value="norm" v-model="format">
               <label class="form-check-label" for="format-norm">Normalisiert</label>
             </div>
-            <div class="form-check form-check-inline">
+            <div class="form-check form-check-inline" @click.left="format='json'">
               <input class="form-check-input" type="radio" name="format" id="format-json" value="json" v-model="format">
               <label class="form-check-label" for="format-json">JSON</label>
             </div>
@@ -194,26 +212,26 @@ function submit() {
           </div>
           <div class="col-auto">
             <div class="input-group">
-              <div class="form-check form-check-inline">
-                <label for="format-csv" class="form-check-label">Tabelle</label>
+              <div class="form-check-inline">
+                <label for="format-csv" class="form-check-label"><b>Tabelle</b></label>
               </div>
-              <div class="form-check form-check-inline">
+              <div class="form-check form-check-inline" @click.left="format='csv'">
                 <input class="form-check-input" type="radio" name="format" id="format-csv" value="csv" v-model="format" disabled>
                 <label class="form-check-label" for="format-csv">CSV</label>
               </div>
-              <div class="form-check form-check-inline">
+              <div class="form-check form-check-inline" @click.left="format='tsv'">
                 <input class="form-check-input" type="radio" name="format" id="format-tsv" value="tsv" v-model="format">
                 <label class="form-check-label" for="format-tsv">TSV</label>
               </div>
-              <div class="form-check form-check-inline">
+              <div class="form-check form-check-inline" @click.left="format='ods'">
                 <input class="form-check-input" type="radio" name="format" id="format-ods" value="ods" v-model="format" disabled>
                 <label class="form-check-label" for="format-ods">Spreadsheet</label>
               </div>
-              <input class="form-check-input" type="checkbox" id="format-delimit" name="delimit" v-model="delimit">
+              <input class="form-check-input" type="checkbox" id="format-delimit" name="delimit" v-model="delimit" disabled>
               <label class="form-check-label" for="format-delimit">
                 Unterfelder trennen mit:
               </label>
-              <input type="text" name="delimiter" class="form-control" v-model="delimiter" style="width:4em;"/>
+              <input type="text" name="separator" class="form-control" v-model="separator" style="width:4em;" disabled/>
             </div>
           </div>
         </td>
@@ -248,8 +266,16 @@ th {
   vertical-align: top;
 }
 .input-group {
-    border: 1px solid #aaa;
-    padding: 0.3rem;
+  padding: 0.3rem;
+  margin-bottom: 0.1rem;
+  height: 3rem;
+  box-shadow: 0 4px 5px 0 rgb(0 0 0 / 14%), 0 1px 10px 0 rgb(0 0 0 / 12%), 0 2px 4px -1px rgb(0 0 0 / 30%);
+
+}
+.form-check-label {
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
+  white-space: nowrap;
 }
 </style>
 

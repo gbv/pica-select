@@ -34,6 +34,36 @@ Zur dauerhaften Installation als Service gibt es verschiedene Möglichkeiten, di
     sudo systemctl enable pica-select
     sudo systemctl start pica-select
 
+## Benutzung
+
+### API
+
+#### GET /
+
+An der Basis-URL des Webservice wird der Client in Form von statischen HTML, CSS und JavaScript-Dateien ausgeliefert.
+
+#### GET /status
+
+Liefert die Konfiguration des Webservice in JSON.
+
+#### GET /select
+
+Abfrage von Daten aus einem PICA-Katalog mit folgenden Abfrage-Parametern:
+
+- `db` (optional) Datenbankkürzel (siehe <http://uri.gbv.de/database/>)
+- `query` (notwendig) Abfrage in CQL-Syntax
+- `format` (optional) Gewünschtes Rückgabeformat
+- `reduce` (optional) Liste von auszuwählenden PICA-Feldern als [PICA Path]-Ausdrücke
+- `select` (optional)
+- `levels` (optional)
+- `separator` (optional)
+
+[PICA Path]: https://format.gbv.de/query/picapath
+
+## Entwicklung
+
+Der Webservice ist in Perl und Server
+
 ## Client
 
 ## Project Setup

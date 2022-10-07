@@ -1,12 +1,13 @@
 package GBV::SRUSelect;
 use v5.20;
+use utf8;    # UTF-8 im Quelltext
 
 use parent 'Plack::Component';
 use Plack::Request;
 use Plack::Response;
 use Catmandu::Importer::SRU;
 use Try::Tiny;
-use PICA::Data qw(pica_writer pica_path pica_value pica_fields);
+use PICA::Data ':all';
 use JSON;
 use Encode::Unicode qw(encode);
 
@@ -15,8 +16,6 @@ use Plack::Util::Accessor qw(databases default_database);
 sub json {
     return [ JSON->new->utf8->allow_blessed->encode(shift) ];
 }
-
-use utf8;    # UTF-8 im Quelltext
 
 sub path {
     my ( $path, $subfields ) = @_;
@@ -41,6 +40,33 @@ sub path {
     return $path;
 }
 
+# TODO: move to PICA::Data as part of pica_split
+sub levels {
+    my ( $record, $level ) = @_;
+    return $record unless $level;
+
+    my @records;
+
+    my $level0 = pica_title($record)->{record};
+
+    for my $holding ( @{ pica_holdings($record) } ) {
+        if ( $level eq '01' ) {
+            unshift @{ $holding->{record} }, @$level0;
+            push @records, $holding;
+        }
+        else {    # '012'
+            my $level1 = pica_fields( $holding, '1.../*' );
+            for my $item ( @{ pica_items($holding) } ) {
+
+                unshift @{ $item->{record} }, @$level0, @$level1;
+                push @records, $item;
+            }
+        }
+    }
+
+    return @records;
+}
+
 sub call {
     my ( $self, $env ) = @_;
 
@@ -58,28 +84,24 @@ sub call {
         my $format = $params->{format} || 'pp';
         die "Format not supported" if $format !~ /^(json|pp|norm|tsv|csv|ods)$/;
 
-        my $select = $params->{select};
-        $select =~ s/^\s+|\s+$//mg;
+        my @map;
 
-        my $records = $self->query( db => $db, cql => $cql );
-
-        # TODO: split records if requested
+        if ( my $levels = $params->{levels} ) {
+            die [ 400, "Levels darf nur 0, 01 oder 012 sein!\n" ]
+              if $levels !~ /^0|01|012$/;
+            push @map, sub { return levels( $_[0], $levels ) };
+        }
 
         if ( my $reduce = $params->{reduce} ) {
             $reduce =~ s/\s+//mg;
-
-            $reduce  = [ map { path( $_, 0 ) } split /[|,]+/, $reduce ];
-            $records = $records->map(
-                sub {
-                    return pica_fields( $_[0], @$reduce );
-                }
-            );
+            $reduce = [ map { path( $_, 0 ) } split /[|,]+/, $reduce ];
+            push @map, sub { return pica_fields( $_[0], @$reduce ); }
         }
 
-        $records = $records->to_array;
+        my $records = $self->query( db => $db, cql => $cql );
 
-        # TODO: Reduktion auf einzelne Felder mit select
-        # TODO: Record separator
+        $records = $records->map($_) for @map;
+        $records = $records->to_array;
 
         if ( $format eq 'json' ) {
             $res->body( json($records) );
@@ -98,12 +120,18 @@ sub call {
             $res->body( [$body] );
         }
         elsif ( $format eq 'tsv' ) {
+            my $select = $params->{select};
+            $select =~ s/^\s+|\s+$//mg;
             die [ 400, "Bitte Unterfelder angeben" ] unless $select;
             my @path = map { path( $_, 1 ) } split /,/, $select;
+
+            my $separator = $params->{separator};
 
             $res->header( 'Content-Type' => 'text/plain' );
             my @rows;
             for my $record (@$records) {
+
+                # TODO: respect separator
                 my @row = map { pica_value( $record, $_ ) } @path;
                 push @rows, join( "\t", @row ) . "\n";
             }
@@ -134,6 +162,7 @@ sub query {
     $limit = 10 if !( $limit > 0 ) || $limit > 100;
 
     # TODO: optionally add xpn, user, password...
+    # TODO: add X-Total-Count header
 
     return Catmandu::Importer::SRU->new(
         base         => $db->{srubase},

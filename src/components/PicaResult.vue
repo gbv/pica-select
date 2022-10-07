@@ -13,5 +13,7 @@ watch(toRefs(props).records, highlight)
 </script>
 
 <template>
-  <pre class="language-pica" id="pica-result"><code>{{records}}</code></pre>
+  <div>
+    <pre class="language-pica" id="pica-result"><code>{{records}}</code></pre>
+  </div>
 </template>

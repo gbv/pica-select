@@ -13,7 +13,6 @@ const api = import.meta.env.MODE === "production" ? "." : "http://localhost:5000
 
 <template>
   <section class="container">
-    <h2>Abfrage</h2>
     <PicaSelectQuery :api="api" v-model="result" class="pica-select-search"/>
   </section>
   <section v-if="result.error" class="container alert alert-danger">
@@ -22,7 +21,10 @@ const api = import.meta.env.MODE === "production" ? "." : "http://localhost:5000
   </section>
   <section v-else-if="result.url" class="container">
     <a class="float-end alert-link" :href="result.url">API</a>
-    <h2>Ergebnis</h2>
+    <h2>
+      Ergebnis
+      <small v-if="result.count">({{result.count}} Datensätze)</small>
+    </h2>
     <PicaResult v-if="result.pica" :records="result.pica"/>
     <TabularResult v-else-if="result.table" :table="result.table" />
     <div v-else>
