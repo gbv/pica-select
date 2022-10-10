@@ -1,14 +1,13 @@
-import { fileURLToPath, URL } from 'node:url'
+import path from "path"
+import vue from "@vitejs/plugin-vue"
 
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-
-// https://vitejs.dev/config/
-export default defineConfig({
+/* eslint-disable no-undef */
+export default {
   plugins: [vue()],
-  resolve: {
+  resolve: {      
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      "@": path.resolve(__dirname, "src"),
+      "bootstrap": path.resolve(__dirname, "node_modules/bootstrap")
     }
   }
-})
+}

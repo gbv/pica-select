@@ -2,6 +2,8 @@
 import { ref } from "vue"
 import { name, version } from '../package.json'
 
+import "bootstrap/dist/css/bootstrap.css"
+
 import PicaSelectQuery from './components/PicaSelectQuery.vue'
 import PicaResult from "./components/PicaResult.vue"
 import TabularResult from "./components/TabularResult.vue"
