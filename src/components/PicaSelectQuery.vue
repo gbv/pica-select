@@ -49,9 +49,11 @@ onMounted(() => {
     })
 })
 
+// TODO: use computed property and show in form
+
 function selectURL(params) {
   for (let key in params) {
-    if (typeof params[key] === 'undefined' || params[key] === "") {
+    if (typeof params[key] === 'undefined') {
       delete params[key]
     }
   }
@@ -64,19 +66,22 @@ function submit() {
     db: dbkey.value,
     query: query.value,
     format: format.value,
-    reduce: reduce.value,
     levels: levels.value,
-//    separator: separator.value
   }    
-  if (tabular) {
+  if (tabular.value) {
     params.select = select.value
+    if (delimit.value) {
+      params.separator = separator.value
+    }
+  } else {
+    params.reduce = reduce.value
   }
-  const apiURL = selectURL(params)
+  const url = selectURL(params)
   if (!browser.value) {
-    window.location.href = selectURL
+    window.location.href = url
     return
   }
-  params.format = tabular ? 'tsv' : 'pp'
+  params.format = tabular.value ? 'table' : 'pp'
   fetch(selectURL(params))
     .then(async res => {
       if (!res.ok) {
@@ -88,12 +93,11 @@ function submit() {
         }
         throw error
       }        
-      return params.format == "json" ? res.json() : res.text()
+      return tabular.value ? res.json() : res.text()
     })
     .then(data => {
-      const result = { url: apiURL }
-      if (tabular) {
-        // TODO: parse tsv/csv or get as JSON
+      const result = { url }
+      if (tabular.value) {
         result.table = data
       } else {
         result.count = data.split("\n").filter(l => l === "").length 
@@ -113,7 +117,6 @@ function submit() {
     <input class="form-check-input" type="checkbox" role="switch" id="browser" v-model="browser">
     <label class="form-check-label" for="browser">im Browser</label>
   </div>
-  <h2>Abfrage</h2>
     <table>
       <tr>
         <th>
@@ -214,7 +217,7 @@ function submit() {
             <tr>
               <td>
                 <div class="form-check form-check-inline" @click.left="format='csv'">
-                  <input class="form-check-input" type="radio" name="format" id="format-csv" value="csv" v-model="format" disabled>
+                  <input class="form-check-input" type="radio" name="format" id="format-csv" value="csv" v-model="format">
                   <label class="form-check-label" for="format-csv">CSV</label>
                 </div>
                 <div class="form-check form-check-inline" @click.left="format='tsv'">

@@ -5,6 +5,7 @@ use utf8;    # UTF-8 im Quelltext
 use parent 'Plack::Component';
 use Plack::Request;
 use Plack::Response;
+use Catmandu 'exporter';
 use Catmandu::Importer::SRU;
 use Try::Tiny;
 use PICA::Data ':all';
@@ -26,16 +27,10 @@ sub path {
         die [ 400, "Ungültiger PICA Path Ausdruck '$path'" ];
     };
     if ( defined $subfields ) {
-        if ( defined $path->subfields ) {
-            die [
-                400, "PICA Patch Ausdruck '$path' darf keine Unterfelder haben"
-              ]
-              if !$subfields;
-        }
-        else {
-            die [ 400, "PICA Patch Ausdruck '$path' fehlen Unterfelder" ]
-              if $subfields;
-        }
+        die [ 400, "PICA Path Ausdruck '$path' darf keine Unterfelder haben" ]
+          if defined $path->subfields && !$subfields;
+        die [ 400, "PICA Path Ausdruck '$path' fehlen Unterfelder" ]
+          if !defined $path->subfields && $subfields;
     }
     return $path;
 }
@@ -114,9 +109,7 @@ sub select {
             $format = $format eq 'pp' ? 'plain' : 'plus';
             my $body   = "";
             my $writer = pica_writer( $format, \$body );
-            for my $rec (@$records) {
-                $writer->write($rec);
-            }
+            $writer->write($_) for @$records;
             $writer->end;
             $res->header( 'Content-Type' => 'text/plain; encoding=UTF-8' );
 
@@ -124,39 +117,45 @@ sub select {
             $res->body( [$body] );
         }
         elsif ( $format =~ /^(tsv|csv|ods|table)$/ ) {
-            my $select = $params->{select};
-            $select =~ s/^\s+|\s+$//mg;
-            die [ 400, "Bitte Unterfelder angeben" ] unless $select;
+            my @lines = grep { $_ } map { s/^\s+|\s+$//mgr; } split "\n",
+              $params->{select} // '';
+            my @fields = grep { $_ } map {
+                $_ =~ s/\s+\$/\$/;
+                $_ = ~/^(([\p{L}0-9_-]+):)?\s*(.+)/;
+                { name => $2 || $3, value => "" . path( $3, 1 ) };
+            } @lines;
 
-            # TODO allow optional field names e.g. ppn:003@$
-            my @path = map { path( $_, 1 ) } split /,/, $select;
+            die [ 400,
+                "Bitte eine Auswahl pro Zeile der Form '(Name:) Feld \$codes'" ]
+              unless @fields && @fields == @lines;
 
             my $separator = $params->{separator};
-            my @rows =
-              map {
-                my $rec = $_;
+            my $extract =
+              defined $separator
+              ? sub { join $separator, pica_values(@_) }
+              : sub { pica_value(@_) };
 
-                # TODO: respect separator
-                {
-                    map { $_ => pica_value( $rec, $_ ) } @path
-                }
-              } @$records;
+            my @rows;
+            for my $rec (@$records) {
+                push @rows,
+                  { map { $_->{name} => $extract->( $rec, $_->{value} ) }
+                      @fields };
+            }
 
             if ( $format eq 'table' ) {
-
-                # TODO?: include 'fields' (JSON Table Schema)
-                # or use https://www.w3.org/TR/csv2json/
-                # { tables => [ { row => \@rows } ] }
-                $res->body( json( { rows => \@rows } ) );
+                $res->body( json( { fields => \@fields, rows => \@rows } ) );
             }
             else {
-                # TODO: properly support CSV and ODS
-                $res->header( 'Content-Type' => 'text/plain' );
-
-                # TSV
-                $records = [ map { join( "\t", @$_ ) . "\n" } @rows ];
-
-                $res->body($records);
+                my $body;
+                if ( $format eq 'tsv' ) {
+                    $res->header( 'Content-Type' => 'text/plain' );
+                    exporter( 'TSV', file => \$body )->add_many( \@rows );
+                }
+                else {    # TODO: support ODS with OpenOffice::OODoc
+                    $res->header( 'Content-Type' => 'text/csv' );
+                    exporter( 'CSV', file => \$body )->add_many( \@rows );
+                }
+                $res->body( [$body] );
             }
         }
     }

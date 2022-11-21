@@ -21,8 +21,17 @@ const api = import.meta.env.MODE === "production" ? "." : "http://localhost:5000
     <a v-if="result.url" class="float-end alert-link" :href="result.url">API</a>
     Fehler {{result.error.status}}: {{result.error.message}}
   </section>
-  <section v-else-if="result.url" class="container">
-    <a class="float-end alert-link" :href="result.url">API</a>
+  <section v-else-if="result.url" class="container">      
+    <div class="float-end" v-if="result.table">
+      <ul class="list-inline">
+        <li v-for="format of 'tsv,csv,ods,json'.split(',')" class="list-inline-item">
+          <a class="alert-link" :href="result.url.replace(/format=[a-z]+/,'format='+format)">
+            {{format.toUpperCase()}}
+          </a>
+        </li>
+      </ul>
+    </div>
+    <a v-else class="float-end alert-link" :href="result.url">API</a>
     <h2>
       Ergebnis
       <small v-if="result.count">({{result.count}} Datensätze)</small>
