@@ -28,7 +28,7 @@ const levels = ref("0")
 const delimit = ref(false)
 const separator = ref("; ")
 
-const tabular = computed(() => format.value.match(/^(csv|tsv|ods)$/))
+const tabular = computed(() => format.value.match(/^(csv|tsv|ods|table)$/))
 
 onMounted(() => {
   const url = `${props.api}/status`
@@ -49,9 +49,17 @@ onMounted(() => {
     })
 })
 
+function selectURL(params) {
+  for (let key in params) {
+    if (typeof params[key] === 'undefined' || params[key] === "") {
+      delete params[key]
+    }
+  }
+  return `${props.api}/select?` + new URLSearchParams(params)
+}
+
 // TODO: move to parent component and do form validation?
 function submit() {
-  const tabular = /^(csv|tsv|ods)$/.test(format.value) ? format.value : null
   const params = {
     db: dbkey.value,
     query: query.value,
@@ -59,21 +67,17 @@ function submit() {
     reduce: reduce.value,
     levels: levels.value,
 //    separator: separator.value
-  }
+  }    
   if (tabular) {
     params.select = select.value
   }
-  for (let key in params) {
-      if (typeof params[key] === 'undefined' || params[key] === "") {
-          delete params[key]
-      }
-  }
-  const url = `${props.api}/select?` + new URLSearchParams(params)
+  const apiURL = selectURL(params)
   if (!browser.value) {
-    window.location.href = url
+    window.location.href = selectURL
     return
-  } 
-  fetch(url)
+  }
+  params.format = tabular ? 'tsv' : 'pp'
+  fetch(selectURL(params))
     .then(async res => {
       if (!res.ok) {
         var error
@@ -87,20 +91,12 @@ function submit() {
       return params.format == "json" ? res.json() : res.text()
     })
     .then(data => {
-      const result = { url, params }
+      const result = { url: apiURL }
       if (tabular) {
-
-        // TODO: parse tsv/csv
+        // TODO: parse tsv/csv or get as JSON
         result.table = data
-      } else {        
-        if (params.format == 'pp') {
-            result.count = data.split("\n").filter(l => l === "").length 
-        } else if (params.format == 'norm') {
-            result.count = data.split("\n").length 
-        } else {
-            result.count = data.length
-        }
-
+      } else {
+        result.count = data.split("\n").filter(l => l === "").length 
         result.pica = data
       }
       emit("update:modelValue", result)
@@ -166,7 +162,7 @@ function submit() {
           </div>
         </td>
       </tr>
-      <tr>
+      <!--tr>
         <th>
           <label>Filter</label>
         </th>
@@ -185,55 +181,57 @@ function submit() {
             </div>
           </div>
         </td>
-      </tr>
+      </tr-->
       <tr>
         <th>
           <label>Format</label>
         </th>
         <td class="row align-items-center">
-          <div class="col-auto">
-            <div class="input-group">
-            <div class="form-check-inline">
-              <label for="format-pp" class="form-check-label"><b>PICA+</b></label>
-            </div>
-              <div class="form-check form-check-inline" @click.left="format='pp'">
-              <input class="form-check-input" type="radio" name="format" id="format-pp" value="pp" v-model="format">
-              <label class="form-check-label" for="format-pp">Plain</label>
-            </div>
-            <div class="form-check form-check-inline" @click.left="format='norm'">
-              <input class="form-check-input" type="radio" name="format" id="format-norm" value="norm" v-model="format">
-              <label class="form-check-label" for="format-norm">Normalisiert</label>
-            </div>
-            <div class="form-check form-check-inline" @click.left="format='json'">
-              <input class="form-check-input" type="radio" name="format" id="format-json" value="json" v-model="format">
-              <label class="form-check-label" for="format-json">JSON</label>
-            </div>
-            </div>
-          </div>
-          <div class="col-auto">
-            <div class="input-group">
-              <div class="form-check-inline">
-                <label for="format-csv" class="form-check-label"><b>Tabelle</b></label>
-              </div>
-              <div class="form-check form-check-inline" @click.left="format='csv'">
-                <input class="form-check-input" type="radio" name="format" id="format-csv" value="csv" v-model="format" disabled>
-                <label class="form-check-label" for="format-csv">CSV</label>
-              </div>
-              <div class="form-check form-check-inline" @click.left="format='tsv'">
-                <input class="form-check-input" type="radio" name="format" id="format-tsv" value="tsv" v-model="format">
-                <label class="form-check-label" for="format-tsv">TSV</label>
-              </div>
-              <div class="form-check form-check-inline" @click.left="format='ods'">
-                <input class="form-check-input" type="radio" name="format" id="format-ods" value="ods" v-model="format" disabled>
-                <label class="form-check-label" for="format-ods">Spreadsheet</label>
-              </div>
-              <input class="form-check-input" type="checkbox" id="format-delimit" name="delimit" v-model="delimit" disabled>
-              <label class="form-check-label" for="format-delimit">
-                Unterfelder trennen mit:
-              </label>
-              <input type="text" name="separator" class="form-control" v-model="separator" style="width:4em;" disabled/>
-            </div>
-          </div>
+          <table>
+            <tr>
+              <td>
+               <div class="form-check form-check-inline" @click.left="format='pp'">
+                  <input class="form-check-input" type="radio" name="format" id="format-pp" value="pp" v-model="format">
+                  <label class="form-check-label" for="format-pp">PICA Plain</label>
+                </div>
+                <div class="form-check form-check-inline" @click.left="format='norm'">
+                  <input class="form-check-input" type="radio" name="format" id="format-norm" value="norm" v-model="format">
+                  <label class="form-check-label" for="format-norm">Normalisiert</label>
+                </div>
+                <div class="form-check form-check-inline" @click.left="format='json'">
+                  <input class="form-check-input" type="radio" name="format" id="format-json" value="json" v-model="format">
+                  <label class="form-check-label" for="format-json">PICA/JSON</label>
+                </div>
+              </td>
+              <td rowspan="2" v-if="tabular">
+                <input class="form-check-input" type="checkbox" id="format-delimit" name="delimit" v-model="delimit">
+                <label class="form-check-label" for="format-delimit">
+                  Unterfelder trennen mit:
+                </label>
+                <input type="text" name="separator" class="form-control" v-model="separator" style="width:4em;"/>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="form-check form-check-inline" @click.left="format='csv'">
+                  <input class="form-check-input" type="radio" name="format" id="format-csv" value="csv" v-model="format" disabled>
+                  <label class="form-check-label" for="format-csv">CSV</label>
+                </div>
+                <div class="form-check form-check-inline" @click.left="format='tsv'">
+                  <input class="form-check-input" type="radio" name="format" id="format-tsv" value="tsv" v-model="format">
+                  <label class="form-check-label" for="format-tsv">TSV</label>
+                </div>
+                <div class="form-check form-check-inline" @click.left="format='ods'">
+                  <input class="form-check-input" type="radio" name="format" id="format-ods" value="ods" v-model="format" disabled>
+                  <label class="form-check-label" for="format-ods">Spreadsheet</label>
+                </div>
+                <div class="form-check form-check-inline" @click.left="format='table'">
+                  <input class="form-check-input" type="radio" name="format" id="format-table" value="table" v-model="format">
+                  <label class="form-check-label" for="format-table">JSON Table</label>
+                </div>
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>
       <tr>
@@ -250,7 +248,8 @@ function submit() {
         <td v-else>
           <input type="text" class="form-control" style="width:100%" v-model="reduce" />
           <div class="form-text">
-              Einzelne PICA+ Felder in <a href="https://format.gbv.de/query/picapath">PICA Path</a> Syntax z.B. <code>003@, 021A, ...</code>
+            Einzelne PICA+ Felder in <a href="https://format.gbv.de/query/picapath">PICA Path</a>
+            Syntax z.B. <code>003@, 021A, ...</code>
           </div>
         </td>
       </tr>
@@ -260,17 +259,14 @@ function submit() {
 
 
 <style scoped>
+table {
+  border-spacing: 0rem 0.5rem;
+  border-collapse: unset;
+}
 th {
   padding-right: 1rem;
   padding-top: 0.5rem;
   vertical-align: top;
-}
-.input-group {
-  padding: 0.3rem;
-  margin-bottom: 0.1rem;
-  height: 3rem;
-  box-shadow: 0 4px 5px 0 rgb(0 0 0 / 14%), 0 1px 10px 0 rgb(0 0 0 / 12%), 0 2px 4px -1px rgb(0 0 0 / 30%);
-
 }
 .form-check-label {
   padding-left: 0.3rem;
@@ -279,26 +275,3 @@ th {
 }
 </style>
 
-<!--style scoped>
-code {
-  color: #d63384;
-  word-wrap: break-word;
-}
-a > code {
-  color: rgb(96, 143, 219);
-}
-pre {
-  background-color: #f7f7f9;
-  padding: 1em;
-  margin: 0.3em 0;
-}
-pre > code {
-  color: #000;
-}
-input, label {
-  display: inline-block;
-}
-form {
-  padding: 0.5em 0em 0em 0em;
-}
-</style-->

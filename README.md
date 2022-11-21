@@ -28,6 +28,10 @@ Der Dienst kann nun testweise auf Port :5000 gestartet werden:
 
     make run
 
+Zur Entwicklung sollten stattdessen Frontend und Backend zusammen dynamisch gestartet werden:
+
+    make dev
+
 Zur dauerhaften Installation als Service gibt es verschiedene Möglichkeiten, diesen Aufruf dauerhaft, d.h. beim Booten und nach Absturz des Dienst, einzurichten. Die Datei `pica-select.service` enthält ein Beispiel für Systemd. Die Datei setzt vorraus, dass der Coverdienst in `/srv/pica-select` als Benutzer `pica-select` installiert ist (muss je nach Installation angepasst werden):
 
     sudo cp pica-select.service /etc/systemd/system
@@ -62,7 +66,7 @@ Abfrage von Daten aus einem PICA-Katalog mit folgenden Abfrage-Parametern:
 
 ## Entwicklung
 
-Der Webservice ist in Perl und Server
+Der Webservice ist in Perl und JavaScript entwickelt.
 
 ## Client
 

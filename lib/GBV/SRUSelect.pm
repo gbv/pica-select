@@ -69,10 +69,13 @@ sub levels {
 
 sub call {
     my ( $self, $env ) = @_;
+    return $self->select( Plack::Request->new($env)->query_parameters );
+}
 
-    my $req    = Plack::Request->new($env);
-    my $params = $req->query_parameters;
-    my $debug  = $params->{debug};
+sub select {
+    my ( $self, $params ) = @_;
+
+    my $debug = $params->{debug};
 
     my $res =
       Plack::Response->new( 200, [ 'Content-Type' => 'application/json' ] );
@@ -82,7 +85,8 @@ sub call {
         my $db  = $params->{db};
 
         my $format = $params->{format} || 'pp';
-        die "Format not supported" if $format !~ /^(json|pp|norm|tsv|csv|ods)$/;
+        die "Format not supported"
+          if $format !~ /^(json|pp|norm|tsv|csv|ods|table)$/;
 
         my @map;
 
@@ -119,24 +123,41 @@ sub call {
             # TODO: decode UTF-8? use iterator instead?
             $res->body( [$body] );
         }
-        elsif ( $format eq 'tsv' ) {
+        elsif ( $format =~ /^(tsv|csv|ods|table)$/ ) {
             my $select = $params->{select};
             $select =~ s/^\s+|\s+$//mg;
             die [ 400, "Bitte Unterfelder angeben" ] unless $select;
+
+            # TODO allow optional field names e.g. ppn:003@$
             my @path = map { path( $_, 1 ) } split /,/, $select;
 
             my $separator = $params->{separator};
-
-            $res->header( 'Content-Type' => 'text/plain' );
-            my @rows;
-            for my $record (@$records) {
+            my @rows =
+              map {
+                my $rec = $_;
 
                 # TODO: respect separator
-                my @row = map { pica_value( $record, $_ ) } @path;
-                push @rows, join( "\t", @row ) . "\n";
-            }
+                {
+                    map { $_ => pica_value( $rec, $_ ) } @path
+                }
+              } @$records;
 
-            $res->body( \@rows );
+            if ( $format eq 'table' ) {
+
+                # TODO?: include 'fields' (JSON Table Schema)
+                # or use https://www.w3.org/TR/csv2json/
+                # { tables => [ { row => \@rows } ] }
+                $res->body( json( { rows => \@rows } ) );
+            }
+            else {
+                # TODO: properly support CSV and ODS
+                $res->header( 'Content-Type' => 'text/plain' );
+
+                # TSV
+                $records = [ map { join( "\t", @$_ ) . "\n" } @rows ];
+
+                $res->body($records);
+            }
         }
     }
     catch {
