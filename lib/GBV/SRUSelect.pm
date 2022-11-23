@@ -146,14 +146,19 @@ sub select {
                 $res->body( json( { fields => \@fields, rows => \@rows } ) );
             }
             else {
-                my $body;
+                my $body = '';
+                my @opts = (
+                    file   => \$body,
+                    fields => [ map { $_->{name} } @fields ]
+                );
                 if ( $format eq 'tsv' ) {
-                    $res->header( 'Content-Type' => 'text/plain' );
-                    exporter( 'TSV', file => \$body )->add_many( \@rows );
+                    $res->header(
+                        'Content-Type' => 'text/tab-separated-values' );
+                    exporter( TSV => @opts )->add_many( \@rows );
                 }
                 else {    # TODO: support ODS with OpenOffice::OODoc
                     $res->header( 'Content-Type' => 'text/csv' );
-                    exporter( 'CSV', file => \$body )->add_many( \@rows );
+                    exporter( CSV => @opts )->add_many( \@rows );
                 }
                 $res->body( [$body] );
             }

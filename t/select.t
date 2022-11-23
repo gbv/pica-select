@@ -29,8 +29,8 @@ my $json = query('t/example.pp', format => 'json', levels => '02');
 $res = decode_json($json);
 is @$res, 7, 'format=norm, levels=02';
 
-my $tsv = query('t/example.pp', format => 'tsv', select => 'ppn: 003@ $0' );
-is $tsv, "ppn\n1030386986\n161165839X\n786718889\n", "tsv";
+my $tsv = query('t/example.pp', format => 'tsv', select => "ppn: 003@ \$0\n lang:010@\$ac\n" );
+is $tsv, "ppn\tlang\n1030386986\tger\n161165839X\tger\n786718889\tger\n", "tsv";
 
 my $table = query('t/example.pp', format => 'table', select => "ppn: 003@\$0\n032@\$a\n" );
 is_deeply explain decode_json($table),
@@ -45,5 +45,6 @@ is_deeply explain decode_json($table),
          { '032@$a' => '2. Aufl.', ppn => '786718889' }
       ]
    }, 'format=table';
+
 
 done_testing;
