@@ -46,6 +46,8 @@ const api = import.meta.env.MODE === "production" ? "." : "http://localhost:5000
     <p>
       <a href="https://github.com/gbv/pica-select">{{name}}</a> {{version}}
       at <a :href="api">{{api}}</a>
+      &nbsp;
+      <a :href="api+'/status'">/status</a>
     </p>
   </footer>
 </template>
@@ -65,27 +67,3 @@ footer {
   color: #666;
 }
 </style>
-
-<!--style scoped>
-code {
-  color: #d63384;
-  word-wrap: break-word;
-}
-a > code {
-  color: rgb(96, 143, 219);
-}
-pre {
-  background-color: #f7f7f9;
-  padding: 1em;
-  margin: 0.3em 0;
-}
-pre > code {
-  color: #000;
-}
-input, label {
-  display: inline-block;
-}
-form {
-  padding: 0.5em 0em 0em 0em;
-}
-</style-->

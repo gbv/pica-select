@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUpdated, computed, watch } from 'vue'
 
 const props = defineProps({
   api: {
@@ -14,25 +14,68 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-// is set via API endpoint /status
+// set via API endpoint /status
 const databases = ref({})
 
-// query and/or form parameters
+// query/form fields
 const dbkey = ref(undefined)
 const format = ref("pp")
 const query = ref("")
+const levels = ref("0")
 const select = ref("")
 const reduce = ref("")
-const browser = ref(true)
-const levels = ref("0")
-const delimit = ref(false)
 const separator = ref("; ")
+const delimit = ref(false)
+const formFields = { dbkey, format, query, levels, select, reduce, separator, delimit }
 
-const tabular = computed(() => format.value.match(/^(csv|tsv|ods|table)$/))
+// additional form fields and calculated values
+const browser = ref(true)
+const loading = ref(false)
+const apiRequestURL = ref("")
+const clientRequestURL = ref("")
+const tabular = ref(false)
+
+// called when any query/form field changes
+watch([dbkey, format, query, levels, select, reduce, separator, delimit], 
+  ([dbkey, format, query, levels, select, reduce, separator, delimit]) => {
+
+  tabular.value = format.match(/^(csv|tsv|ods|table)$/)
+
+  const fields = { dbkey, format, query }    
+  if (levels != "0") { 
+    fields.levels = levels 
+  }
+  if (tabular.value) {
+    if (delimit) {
+      fields.separator = separator
+    }    
+    fields.select = select
+  } else if (reduce != "") {
+    fields.reduce = reduce
+  }
+
+  const params = new URLSearchParams(fields)
+  apiRequestURL.value = `${props.api}/select?${params}`
+  window.history.replaceState({}, "", `?${params}`)
+
+  fields.format = tabular.value ? 'table' : 'pp'
+  clientRequestURL.value = `${props.api}/select?${new URLSearchParams(fields)}`
+})
+
+const fetchLoading = async url => {
+  loading.value = true
+  return fetch(url).then(res => {
+    loading.value = false
+    return res
+  })
+}
+
+// TODO: this is not triggered when back/forward is clicked - seems like Vue catches it?
+// window.addEventListener('popstate', () => { console.log("popstate") })
 
 onMounted(() => {
   const url = `${props.api}/status`
-  fetch(url)
+  fetchLoading(url)
     .then(res => {
       if (res.ok) {
         try { return res.json() } catch { } // eslint-disable-line no-empty 
@@ -42,47 +85,31 @@ onMounted(() => {
     .then(res => {
       // TODO: disable form
       databases.value = res.databases || {}
-      dbkey.value = res.default_database
+      if (!dbkey.value) {
+        dbkey.value = res.default_database
+      }
       if (res.error) {
         emit("update:modelValue", { error: { message: res.error }, url })
       }
     })
+
+    const params = new URLSearchParams(window.location.search)
+    for (let name in formFields) {
+      if (params.has(name)) {
+        formFields[name].value = params.get(name)
+      }
+    }
 })
 
-// TODO: use computed property and show in form
-
-function selectURL(params) {
-  for (let key in params) {
-    if (typeof params[key] === 'undefined') {
-      delete params[key]
-    }
-  }
-  return `${props.api}/select?` + new URLSearchParams(params)
-}
-
-// TODO: move to parent component and do form validation?
 function submit() {
-  const params = {
-    db: dbkey.value,
-    query: query.value,
-    format: format.value,
-    levels: levels.value,
-  }    
-  if (tabular.value) {
-    params.select = select.value
-    if (delimit.value) {
-      params.separator = separator.value
-    }
+  if (browser.value) {
+    window.history.pushState({}, "")
   } else {
-    params.reduce = reduce.value
-  }
-  const url = selectURL(params)
-  if (!browser.value) {
-    window.location.href = url
+    window.location.href = apiRequestURL
     return
   }
-  params.format = tabular.value ? 'table' : 'pp'
-  fetch(selectURL(params))
+
+  fetchLoading(clientRequestURL.value)
     .then(async res => {
       if (!res.ok) {
         var error
@@ -96,7 +123,7 @@ function submit() {
       return tabular.value ? res.json() : res.text()
     })
     .then(data => {
-      const result = { url }
+      const result = { url: apiRequestURL.value }
       if (tabular.value) {
         result.table = data
       } else {
@@ -106,16 +133,19 @@ function submit() {
       emit("update:modelValue", result)
     })
     .catch(error => {
-      emit("update:modelValue", { url, params, error })
+      emit("update:modelValue", { url: apiRequestURL.value, error })
     })
 }
 </script>
 
 <template>    
   <form :action="`${api}/select`" method="get" v-on:submit.prevent="submit">
-  <div class="form-switch float-end">
+  <div class="float-end">
+    <a v-if="apiRequestURL" :href="apiRequestURL">API</a>
+  <div class="form-switch">
     <input class="form-check-input" type="checkbox" role="switch" id="browser" v-model="browser">
     <label class="form-check-label" for="browser">im Browser</label>
+  </div>
   </div>
     <table>
       <tr>
@@ -152,7 +182,7 @@ function submit() {
             </div>
           </div>
           <div class="col-auto">
-            <button type="submit" class="btn btn-primary">Abfragen</button>
+            <button type="submit" class="btn btn-primary" :disabled="loading">Abfragen</button>
           </div>
           <div class="col-auto">
             <div class="form-check form-switch">
@@ -260,7 +290,6 @@ function submit() {
   </form>
 </template>
 
-
 <style scoped>
 table {
   border-spacing: 0rem 0.5rem;
@@ -277,4 +306,3 @@ th {
   white-space: nowrap;
 }
 </style>
-

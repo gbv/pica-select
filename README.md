@@ -60,7 +60,7 @@ Abfrage von Daten aus einem PICA-Katalog mit folgenden Abfrage-Parametern:
 - `reduce` (optional) Liste von auszuwählenden PICA-Feldern als [PICA Path]-Ausdrücke
 - `select` (optional)
 - `levels` (optional)
-- `separator` (optional)
+- `separator` (optional) Trennzeichen zur Kombination mehrere Feldinhalte. Wenn nicht angegeben wird nur der erste Wert berücksichtigt.
 
 [PICA Path]: https://format.gbv.de/query/picapath
 
