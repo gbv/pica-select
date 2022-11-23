@@ -29,11 +29,17 @@ const delimit = ref(false)
 const formFields = { dbkey, format, query, levels, select, reduce, separator, delimit }
 
 // additional form fields and calculated values
+const filterField = ref("")
 const browser = ref(true)
 const loading = ref(false)
 const apiRequestURL = ref("")
 const clientRequestURL = ref("")
 const tabular = ref(false)
+
+const filterFields = {
+  sst: { name: "Sonderstandort", pica: "" },
+  iln: { name: "ILN", pica: "" }
+}
 
 // called when any query/form field changes
 watch([dbkey, format, query, levels, select, reduce, separator, delimit], 
@@ -195,26 +201,29 @@ function submit() {
           </div>
         </td>
       </tr>
-      <!--tr>
+      <tr>
         <th>
           <label>Filter</label>
         </th>
         <td class="row align-items-center">
           <div class="col-auto">
-            <label class="col-form-label">
-              Sonderstandort          
-            </label>
+            <select name="filter-field" class="form-control" v-model="filterField">
+              <option value="">Freie Auswahl</option>
+              <option v-for="(field,key) of filterFields" :value="key" :key="key">
+                {{field.name}}
+              </option>
+            </select>
           </div>
           <div class="col-auto">
-            <input type="text" name="sst" class="form-control" disabled/>
+            <input type="text" v-model="filterValue" class="form-control" />            
           </div>
           <div class="col-auto">
-            <div class="form-text">
-              NOCH NICHT UMGESETZT
+            <div class="form-text">               
+              NOCH NICHT BERÜCKSICHTIGT!
             </div>
           </div>
         </td>
-      </tr-->
+      </tr>
       <tr>
         <th>
           <label>Format</label>
@@ -239,7 +248,7 @@ function submit() {
               <td rowspan="2" v-if="tabular">
                 <input class="form-check-input" type="checkbox" id="format-delimit" name="delimit" v-model="delimit">
                 <label class="form-check-label" for="format-delimit">
-                  Unterfelder trennen mit:
+                  Alle Werte berücksichtigen, getrennt mit:
                 </label>
                 <input type="text" name="separator" class="form-control" v-model="separator" style="width:4em;"/>
               </td>
