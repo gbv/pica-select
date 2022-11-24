@@ -11,7 +11,7 @@ use Try::Tiny;
 use PICA::Data ':all';
 use JSON;
 use Encode::Unicode qw(encode);
-use List::Util      qw(any);
+use List::Util      qw(any all);
 
 use Plack::Util::Accessor qw(databases default_database);
 
@@ -39,15 +39,26 @@ sub path {
 sub filter {
     my ($filter) = @_;
 
-    $filter =~ /^(.+)\s*(==|!=)\s*'([^']*)'$/
-      or die [ 400, "Ungültiger Filter-Ausdruck!\n" ];
+    my @parts;
+    for ( split '&&', $filter ) {
 
-    my ( $path, $operator, $value ) = ( path( $1, 1 ), $2, $3 );
+        # TODO: allow multiple filter expressions (and/or). Pass to pica-rs?
+        $_ =~ /^(.+)\s*(==|!=)\s*'([^']*)'$/
+          or die [ 400, "Ungültiger Filter-Ausdruck!\n" ];
+
+        my ( $path, $operator, $value ) = ( path( $1, 1 ), $2, $3 );
+
+        push @parts, sub {
+            my @values = pica_values( $_[0], $path );
+            return $operator eq '=='
+              ? any { $_ eq $value } @values
+              : any { $_ ne $value } @values;
+        };
+    }
+
     return sub {
-        my @values = pica_values( $_[0], $path );
-        return $operator eq '=='
-          ? any { $_ eq $value } @values
-          : any { $_ ne $value } @values;
+        my $record = shift;
+        return all { $_->($record) } @parts;
     }
 }
 

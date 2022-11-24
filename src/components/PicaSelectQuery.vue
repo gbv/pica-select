@@ -26,35 +26,39 @@ const select = ref("")
 const reduce = ref("")
 const separator = ref("; ")
 const delimit = ref(false)
-const formFields = { dbkey, format, query, level, select, reduce, separator, delimit }
+const filter = ref("")
+const formFields = { dbkey, format, query, level, select, reduce, separator, delimit, filter }
 
 // additional form fields and calculated values
-const filterField = ref("")
 const browser = ref(true)
 const loading = ref(false)
 const apiRequestURL = ref("")
 const clientRequestURL = ref("")
 const tabular = ref(false)
 
+// TODO: use as help
 const filterFields = {
   sst: { name: "Sonderstandort", pica: "" },
   iln: { name: "ILN", pica: "" }
 }
 
 // called when any query/form field changes
-watch([dbkey, format, query, level, select, reduce, separator, delimit], 
-  ([dbkey, format, query, level, select, reduce, separator, delimit]) => {
+watch([dbkey, format, query, level, select, reduce, separator, delimit, filter],
+  ([dbkey, format, query, level, select, reduce, separator, delimit, filter]) => {
 
   tabular.value = format.match(/^(csv|tsv|ods|table)$/)
 
-  const fields = { dbkey, format, query }    
-  if (level != "0") { 
-    fields.level = level 
+  const fields = { dbkey, format, query }
+  if (level != "0") {
+    fields.level = level
+  }
+  if (filter.trim() !== "") {
+    fields.filter = filter
   }
   if (tabular.value) {
     if (delimit) {
       fields.separator = separator
-    }    
+    }
     fields.select = select
   } else if (reduce != "") {
     fields.reduce = reduce
@@ -84,7 +88,7 @@ onMounted(() => {
   fetchLoading(url)
     .then(res => {
       if (res.ok) {
-        try { return res.json() } catch { } // eslint-disable-line no-empty 
+        try { return res.json() } catch { } // eslint-disable-line no-empty
       }
       return { error: "API nicht erreichbar!" }
     })
@@ -125,7 +129,7 @@ function submit() {
           error = { message: "Malformed API response", status: 500 }
         }
         throw error
-      }        
+      }
       return tabular.value ? res.json() : res.text()
     })
     .then(data => {
@@ -133,7 +137,7 @@ function submit() {
       if (tabular.value) {
         result.table = data
       } else {
-        result.count = data.split("\n").filter(l => l === "").length 
+        result.count = data.split("\n").filter(l => l === "").length
         result.pica = data
       }
       emit("update:modelValue", result)
@@ -144,7 +148,7 @@ function submit() {
 }
 </script>
 
-<template>    
+<template>
   <form :action="`${api}/select`" method="get" v-on:submit.prevent="submit">
   <div class="float-end">
     <a v-if="apiRequestURL" :href="apiRequestURL">API</a>
@@ -166,7 +170,7 @@ function submit() {
                 <option v-for="(db,key) of databases" :value="key" :key="key">
                   {{db.title.de || db.title.en || key}}
                 </option>
-              </select>        
+              </select>
             </div>
             <div class="col-auto" v-if="databases[dbkey]">
               <a :href="databases[dbkey].url">{{databases[dbkey].url}}</a>
@@ -207,19 +211,11 @@ function submit() {
         </th>
         <td class="row align-items-center">
           <div class="col-auto">
-            <select name="filter-field" class="form-control" v-model="filterField">
-              <option value="">Freie Auswahl</option>
-              <option v-for="(field,key) of filterFields" :value="key" :key="key">
-                {{field.name}}
-              </option>
-            </select>
+            <input type="text" v-model="filter" class="form-control" />
           </div>
           <div class="col-auto">
-            <input type="text" v-model="filterValue" class="form-control" />            
-          </div>
-          <div class="col-auto">
-            <div class="form-text">               
-              NOCH NICHT BERÜCKSICHTIGT!
+            <div class="form-text">
+                z.B.: <code>101@$a == '22' &amp;&amp; 209A $f != 'SUB'</code>
             </div>
           </div>
         </td>
@@ -282,7 +278,7 @@ function submit() {
         </th>
         <td v-if="tabular">
            <textarea v-model="select" placeholder="Ein Feld pro Zeile" class="form-control"></textarea>
-           <div class="form-text">               
+           <div class="form-text">
             Syntax pro Zeile <code>Name: Feld $codes</code>
             TODO: Standardtabellen
            </div>
