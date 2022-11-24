@@ -220,6 +220,31 @@ function submit() {
       </tr>
       <tr>
         <th>
+          <label>Auswahl</label>
+        </th>
+        <td v-if="tabular">
+          <div class="row">
+            <div class="col">
+              <textarea v-model="select" placeholder="Ein Feld pro Zeile" class="form-control"></textarea>
+              <div class="form-text">
+                Syntax pro Zeile <code>Name: Feld $codes</code>
+              </div>
+            </div>
+            <div class="col-auto">
+                TODO: Standardtabellen (ISBN, Verlag...)
+            </div>
+          </div>
+        </td>
+        <td v-else>
+          <input type="text" class="form-control" style="width:100%" v-model="reduce" />
+          <div class="form-text">
+            Einzelne PICA+ Felder in <a href="https://format.gbv.de/query/picapath">PICA Path</a>
+            Syntax z.B. <code>003@, 021A, ...</code>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <th>
           <label>Format</label>
         </th>
         <td class="row align-items-center">
@@ -268,25 +293,6 @@ function submit() {
               </td>
             </tr>
           </table>
-        </td>
-      </tr>
-      <tr>
-        <th>
-          <label>Auswahl</label>
-        </th>
-        <td v-if="tabular">
-           <textarea v-model="select" placeholder="Ein Feld pro Zeile" class="form-control"></textarea>
-           <div class="form-text">
-            Syntax pro Zeile <code>Name: Feld $codes</code>
-            TODO: Standardtabellen
-           </div>
-        </td>
-        <td v-else>
-          <input type="text" class="form-control" style="width:100%" v-model="reduce" />
-          <div class="form-text">
-            Einzelne PICA+ Felder in <a href="https://format.gbv.de/query/picapath">PICA Path</a>
-            Syntax z.B. <code>003@, 021A, ...</code>
-          </div>
         </td>
       </tr>
     </table>
