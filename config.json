@@ -24,9 +24,12 @@
   },
   "default_database": "opac-de-627",
   "selections": [
-    { "Jahr": "001@ $a" },
-    { "ISSN": "004A $0 +\"= $A\" $0 $A" },
-    { "ISSN": "005A $0" },
-    { "Titel": "021A $a" }
+    "PPN: 003@ $0",
+    "EPN: 203@ $0",
+    "Jahr: 011@ $a",
+    "ISSN: 005A $0",
+    "ISMN: 004F $0",
+    "DOI: 004V $0",
+    "Titel: 021A $a"
   ]
 }

@@ -24,7 +24,7 @@ const api = import.meta.env.MODE === "production" ? "." : "http://localhost:5000
   <section v-else-if="result.url" class="container">      
     <div class="float-end" v-if="result.table">
       <ul class="list-inline">
-        <li v-for="format of 'tsv,csv,json'.split(',')" class="list-inline-item">
+        <li v-for="format of 'tsv,csv,table'.split(',')" class="list-inline-item">
           <a class="alert-link" :href="result.url.replace(/format=[a-z]+/,'format='+format)">
             {{format.toUpperCase()}}
           </a>

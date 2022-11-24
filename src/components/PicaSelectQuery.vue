@@ -26,10 +26,12 @@ const select = ref("")
 const reduce = ref("")
 const separator = ref("; ")
 const delimit = ref(false)
-const filter = ref("")
+const filter = ref("") // TODO: compute from ILN and SST
 const formFields = { dbkey, format, query, level, select, reduce, separator, delimit, filter }
 
 // additional form fields and calculated values
+const selections = ref([])
+const addSelection = ref("")
 const browser = ref(true)
 const loading = ref(false)
 const apiRequestURL = ref("")
@@ -41,6 +43,21 @@ const filterFields = {
   sst: { name: "Sonderstandort", pica: "" },
   iln: { name: "ILN", pica: "" }
 }
+
+watch(addSelection, value => {
+  if (value !== "") {
+    select.value += value+"\n"
+    addSelection.value = ""
+  }
+})
+
+function resizeTextarea() {
+  const area = document.getElementById('textarea-select')
+  if (area) {
+    area.style.height = area.scrollHeight + 'px'
+  }
+}
+watch(select, resizeTextarea)
 
 // called when any query/form field changes
 watch([dbkey, format, query, level, select, reduce, separator, delimit, filter],
@@ -94,6 +111,7 @@ onMounted(() => {
     })
     .then(res => {
       // TODO: disable form
+      selections.value = res.selections
       databases.value = res.databases || {}
       if (!dbkey.value) {
         dbkey.value = res.default_database
@@ -109,6 +127,7 @@ onMounted(() => {
         formFields[name].value = params.get(name)
       }
     }
+  resizeTextarea()
 })
 
 function submit() {
@@ -226,13 +245,20 @@ function submit() {
         <td v-if="tabular">
           <div class="row">
             <div class="col">
-              <textarea v-model="select" placeholder="Ein Feld pro Zeile" class="form-control"></textarea>
+              <textarea id="textarea-select" v-model="select" placeholder="Ein Feld pro Zeile" class="form-control"></textarea>
               <div class="form-text">
                 Syntax pro Zeile <code>Name: Feld $codes</code>
               </div>
             </div>
             <div class="col-auto">
-                TODO: Standardtabellen (ISBN, Verlag...)
+              <button 
+                 type="button" class="btn btn-secondary"
+                @click='select += selections.join("\n")+"\n"'
+                  >⇐ Alle übernehmen</button>
+              <select class="form-control" v-model="addSelection">
+                <option value="">bitte auswählen</option>  
+                <option v-for="s of selections" :value="s">{{s}}</option>
+              </select>
             </div>
           </div>
         </td>
