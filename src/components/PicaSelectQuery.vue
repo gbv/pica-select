@@ -133,10 +133,11 @@ function submit() {
       return tabular.value ? res.json() : res.text()
     })
     .then(data => {
-      const result = { url: apiRequestURL.value }
+      const result = { url: apiRequestURL.value, count: 0 }
       if (tabular.value) {
         result.table = data
-      } else {
+        result.count = data.rows.length
+      } else if (data.length)  {          
         result.count = data.split("\n").filter(l => l === "").length
         result.pica = data
       }

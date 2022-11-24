@@ -32,13 +32,15 @@ const api = import.meta.env.MODE === "production" ? "." : "http://localhost:5000
       </ul>
     </div>
     <a v-else class="float-end alert-link" :href="result.url">API</a>
-    <h2>
-      Ergebnis
-      <small v-if="result.count == 1">(1 Datensatz)</small>
-      <small v-else-if="result.count > 1">({{result.count}} Datensätze)</small>
-    </h2>
-    <PicaResult v-if="result.pica" :records="result.pica"/>
-    <TabularResult v-else-if="result.table" :table="result.table" />
+    <div v-if="result.count > 0"> 
+      <h2>
+        Ergebnis
+        <small v-if="result.count > 1">({{result.count}} Datensätze)</small>
+        <small v-else>(1 Datensatz)</small>
+      </h2>
+      <PicaResult v-if="result.pica" :records="result.pica"/>
+     <TabularResult v-else-if="result.table" :table="result.table" />
+    </div>
     <div v-else>
       Es wurde nichts gefunden.
     </div>
