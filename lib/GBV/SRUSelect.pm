@@ -11,6 +11,7 @@ use Try::Tiny;
 use PICA::Data ':all';
 use JSON;
 use Encode::Unicode qw(encode);
+use List::Util      qw(any);
 
 use Plack::Util::Accessor qw(databases default_database);
 
@@ -28,38 +29,26 @@ sub path {
     };
     if ( defined $subfields ) {
         die [ 400, "PICA Path Ausdruck '$path' darf keine Unterfelder haben" ]
-          if defined $path->subfields && !$subfields;
+          if !$subfields && defined $path->subfields;
         die [ 400, "PICA Path Ausdruck '$path' fehlen Unterfelder" ]
-          if !defined $path->subfields && $subfields;
+          if $subfields && !defined $path->subfields;
     }
     return $path;
 }
 
-# TODO: move to PICA::Data as part of pica_split
-sub levels {
-    my ( $record, $level ) = @_;
-    return $record unless $level;
+sub filter {
+    my ($filter) = @_;
 
-    my @records;
+    $filter =~ /^(.+)\s*(==|!=)\s*'([^']*)'$/
+      or die [ 400, "Ungültiger Filter-Ausdruck!\n" ];
 
-    my $level0 = pica_title($record)->{record};
-
-    for my $holding ( @{ pica_holdings($record) } ) {
-        if ( $level eq '01' ) {
-            unshift @{ $holding->{record} }, @$level0;
-            push @records, $holding;
-        }
-        else {    # '012'
-            my $level1 = pica_fields( $holding, '1.../*' );
-            for my $item ( @{ pica_items($holding) } ) {
-
-                unshift @{ $item->{record} }, @$level0, @$level1;
-                push @records, $item;
-            }
-        }
+    my ( $path, $operator, $value ) = ( path( $1, 1 ), $2, $3 );
+    return sub {
+        my @values = pica_values( $_[0], $path );
+        return $operator eq '=='
+          ? any { $_ eq $value } @values
+          : any { $_ ne $value } @values;
     }
-
-    return @records;
 }
 
 sub call {
@@ -83,23 +72,29 @@ sub select {
         die "Format not supported"
           if $format !~ /^(json|pp|norm|tsv|csv|ods|table)$/;
 
-        my @map;
-
-        if ( my $levels = $params->{levels} ) {
-            die [ 400, "Levels darf nur 0, 01 oder 012 sein!\n" ]
-              if $levels !~ /^0|01|012$/;
-            push @map, sub { return levels( $_[0], $levels ) };
+        my $level;
+        if ( my $l = $params->{level} ) {
+            die [ 400, "Level darf nur 0, 1 oder 2 sein!\n" ]
+              if $l !~ /^[012]$/;
+            $level = sub { return pica_split( $_[0], $l ) };
         }
 
-        if ( my $reduce = $params->{reduce} ) {
-            $reduce =~ s/\s+//mg;
-            $reduce = [ map { path( $_, 0 ) } split /[|,]+/, $reduce ];
-            push @map, sub { return pica_fields( $_[0], @$reduce ); }
+        my $reduce;
+        if ( my $r = $params->{reduce} =~ s/\s+//mgr ) {
+            $r      = [ map { path( $_, 0 ) } split /[|,]+/, $r ];
+            $reduce = sub {
+                return pica_fields( $_[0], @$r );
+            };
         }
+
+        my $filter = $params->{filter} =~ s/\s+|\s+//gr;
+        $filter = filter($filter) if $filter;
 
         my $records = $self->query( db => $db, cql => $cql );
 
-        $records = $records->map($_) for @map;
+        $records = $records->map($level)     if $level;
+        $records = $records->select($filter) if $filter;
+        $records = $records->map($reduce)    if $reduce;
         $records = $records->to_array;
 
         if ( $format eq 'json' ) {
@@ -114,11 +109,13 @@ sub select {
             $res->header( 'Content-Type' => 'text/plain; encoding=UTF-8' );
 
             # TODO: decode UTF-8? use iterator instead?
+            $body =~ s/\n+$/\n/s;
             $res->body( [$body] );
         }
         elsif ( $format =~ /^(tsv|csv|ods|table)$/ ) {
             my @lines = grep { $_ } map { s/^\s+|\s+$//mgr; } split "\n",
               $params->{select} // '';
+            ## no critic
             my @fields = grep { $_ } map {
                 $_ =~ s/\s+\$/\$/;
                 $_ = ~/^(([\p{L}0-9_-]+):)?\s*(.+)/;

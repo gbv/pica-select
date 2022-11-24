@@ -57,9 +57,10 @@ Abfrage von Daten aus einem PICA-Katalog mit folgenden Abfrage-Parametern:
 - `db` (optional) Datenbankkürzel (siehe <http://uri.gbv.de/database/>)
 - `query` (notwendig) Abfrage in CQL-Syntax
 - `format` (optional) Gewünschtes Rückgabeformat
+- `filter` (optional) Ausdruck zum Filtern der Datensätze
 - `reduce` (optional) Liste von auszuwählenden PICA-Feldern als [PICA Path]-Ausdrücke
 - `select` (optional)
-- `levels` (optional)
+- `level` (optional) Titel (`0`), Lokal (`1`) oder Exemplardatensätze (`2`)
 - `separator` (optional) Trennzeichen zur Kombination mehrere Feldinhalte. Wenn nicht angegeben wird nur der erste Wert berücksichtigt.
 
 [PICA Path]: https://format.gbv.de/query/picapath

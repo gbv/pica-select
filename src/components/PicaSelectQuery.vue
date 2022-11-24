@@ -21,12 +21,12 @@ const databases = ref({})
 const dbkey = ref(undefined)
 const format = ref("pp")
 const query = ref("")
-const levels = ref("0")
+const level = ref("0")
 const select = ref("")
 const reduce = ref("")
 const separator = ref("; ")
 const delimit = ref(false)
-const formFields = { dbkey, format, query, levels, select, reduce, separator, delimit }
+const formFields = { dbkey, format, query, level, select, reduce, separator, delimit }
 
 // additional form fields and calculated values
 const filterField = ref("")
@@ -42,14 +42,14 @@ const filterFields = {
 }
 
 // called when any query/form field changes
-watch([dbkey, format, query, levels, select, reduce, separator, delimit], 
-  ([dbkey, format, query, levels, select, reduce, separator, delimit]) => {
+watch([dbkey, format, query, level, select, reduce, separator, delimit], 
+  ([dbkey, format, query, level, select, reduce, separator, delimit]) => {
 
   tabular.value = format.match(/^(csv|tsv|ods|table)$/)
 
   const fields = { dbkey, format, query }    
-  if (levels != "0") { 
-    fields.levels = levels 
+  if (level != "0") { 
+    fields.level = level 
   }
   if (tabular.value) {
     if (delimit) {
@@ -192,10 +192,10 @@ function submit() {
           </div>
           <div class="col-auto">
             <div class="form-check form-switch">
-              <select name="database" class="form-control" v-model="levels">
+              <select name="database" class="form-control" v-model="level">
                 <option value="0">Gesamter Datensatz</option>
-                <option value="01">Lokaldatensätze</option>
-                <option value="012">Exemplare</option>
+                <option value="1">Lokaldatensätze</option>
+                <option value="2">Exemplare</option>
               </select>
             </div>
           </div>
