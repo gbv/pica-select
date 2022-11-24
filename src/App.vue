@@ -24,7 +24,7 @@ const api = import.meta.env.MODE === "production" ? "." : "http://localhost:5000
   <section v-else-if="result.url" class="container">      
     <div class="float-end" v-if="result.table">
       <ul class="list-inline">
-        <li v-for="format of 'tsv,csv,ods,json'.split(',')" class="list-inline-item">
+        <li v-for="format of 'tsv,csv,json'.split(',')" class="list-inline-item">
           <a class="alert-link" :href="result.url.replace(/format=[a-z]+/,'format='+format)">
             {{format.toUpperCase()}}
           </a>
@@ -34,7 +34,8 @@ const api = import.meta.env.MODE === "production" ? "." : "http://localhost:5000
     <a v-else class="float-end alert-link" :href="result.url">API</a>
     <h2>
       Ergebnis
-      <small v-if="result.count">({{result.count}} Datensätze)</small>
+      <small v-if="result.count == 1">(1 Datensatz)</small>
+      <small v-else-if="result.count > 1">({{result.count}} Datensätze)</small>
     </h2>
     <PicaResult v-if="result.pica" :records="result.pica"/>
     <TabularResult v-else-if="result.table" :table="result.table" />

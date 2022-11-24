@@ -150,21 +150,15 @@ function submit() {
 
 <template>
   <form :action="`${api}/select`" method="get" v-on:submit.prevent="submit">
-  <div class="float-end">
-    <a v-if="apiRequestURL" :href="apiRequestURL">API</a>
-  <div class="form-switch">
-    <input class="form-check-input" type="checkbox" role="switch" id="browser" v-model="browser">
-    <label class="form-check-label" for="browser">im Browser</label>
-  </div>
-  </div>
     <table>
       <tr>
         <th>
           <label for="database">Datenbank</label>
         </th>
         <td style="width:100%">
+
           <div class="row align-items-top">
-            <div class="col-auto">
+            <div class="col-5">
               <select name="database" class="form-control" v-model="dbkey">
                 <option disabled value="">Bitte auswählen</option>
                 <option v-for="(db,key) of databases" :value="key" :key="key">
@@ -172,8 +166,14 @@ function submit() {
                 </option>
               </select>
             </div>
-            <div class="col-auto" v-if="databases[dbkey]">
-              <a :href="databases[dbkey].url">{{databases[dbkey].url}}</a>
+            <div class="col-5">
+              <a :href="databases[dbkey].url" v-if="databases[dbkey]">{{databases[dbkey].url}}</a>
+            </div>
+            <div class="col-2">
+              <a v-if="apiRequestURL" :href="apiRequestURL">API</a>
+              <br>
+              <input class="form-check-input" type="checkbox" role="switch" id="browser" v-model="browser">
+              <label class="form-check-label" for="browser">im Browser</label>
             </div>
           </div>
         </td>
@@ -183,7 +183,7 @@ function submit() {
           <label for="query">Abfrage</label>
         </th>
         <td class="row align-items-top">
-          <div class="col-sm-8">
+          <div class="col">
             <input type="text" name="query" class="form-control" style="width:100%" v-model="query"/>
             <div class="form-text">
               in
@@ -210,12 +210,10 @@ function submit() {
           <label>Filter</label>
         </th>
         <td class="row align-items-center">
-          <div class="col-auto">
-            <input type="text" v-model="filter" class="form-control" />
-          </div>
-          <div class="col-auto">
+          <div class="col-12">
+            <input type="text" v-model="filter" class="form-control" style="width:100%"/>
             <div class="form-text">
-                z.B.: <code>101@$a == '22' &amp;&amp; 209A $f != 'SUB'</code>
+                z.B.: <code>101@$a != '22' &amp;&amp; 209A $f == '8/10'</code>
             </div>
           </div>
         </td>
