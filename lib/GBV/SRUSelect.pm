@@ -145,9 +145,11 @@ sub select {
 
             my @rows;
             for my $rec (@$records) {
-                push @rows,
-                  { map { $_->{name} => $extract->( $rec, $_->{value} ) }
-                      @fields };
+                my %row;
+                for my $f (@fields) {
+                    $row{ $f->{name} } = $extract->( $rec, $f->{value} ) // "";
+                }
+                push @rows, \%row;
             }
 
             if ( $format eq 'table' ) {
