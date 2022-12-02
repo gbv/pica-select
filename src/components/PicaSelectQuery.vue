@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUpdated, computed, watch } from 'vue'
+import { ref, onMounted, onUpdated, computed, watch, nextTick } from 'vue'
 
 const props = defineProps({
   api: {
@@ -33,7 +33,6 @@ const formFields = { dbkey, format, query, level, select, reduce, separator, del
 const selections = ref([])
 const addSelection = ref("")
 const browser = ref(true)
-const loading = ref(false)
 const apiRequestURL = ref("")
 const clientRequestURL = ref("")
 const tabular = ref(false)
@@ -89,55 +88,61 @@ watch([dbkey, format, query, level, select, reduce, separator, delimit, filter],
   clientRequestURL.value = `${props.api}/select?${new URLSearchParams(fields)}`
 })
 
-const fetchJSON = async url => {
-  loading.value = true
+const fetchAPI = async url => {
+  emit("update:modelValue", { loading: true })
   return fetch(url)
-    .catch(e => {
-      loading.value = false
-      throw { message: "API nicht erreichbar!", url }
-    })
     .then(async res => {
-      loading.value = false
       var json
       try {
         json = await res.json()
       } catch {
         throw { message: "API-Antwort ist kein JSON!", url }
       }
+
       if (res.ok) {
         return json
       } else {
         throw { message: json.message, url, status: res.status }
       }
     })
+    .catch(e => {
+      throw { message: e.message || "API nicht erreichbar!", url }
+    })
 }
 
+
+function setFormFromURL() {
+  var triggerSubmit
+
+  const params = new URLSearchParams(window.location.search)
+  for (let name in formFields) {
+    if (params.has(name)) {
+      triggerSubmit = true
+      formFields[name].value = params.get(name)
+    }
+  }
+
+  if (triggerSubmit) {
+    nextTick(() => { submit() })
+  }
+
+  resizeTextarea()
+}
 
 // TODO: this is not triggered when back/forward is clicked - seems like Vue catches it?
 // window.addEventListener('popstate', () => { console.log("popstate") })
 
 onMounted(() => {
-
-  // get configuration via status endpoint
-  fetchJSON(`${props.api}/status`)
+  fetchAPI(`${props.api}/status`)
     .then(res => {
       selections.value = res.selections
       databases.value = res.databases || {}
       if (!dbkey.value) {
         dbkey.value = res.default_database
       }
+      setFormFromURL()
     })
     .catch(error => emit("update:modelValue", { error }))
-
-  // set form state from URL
-  const params = new URLSearchParams(window.location.search)
-  for (let name in formFields) {
-    if (params.has(name)) {
-      formFields[name].value = params.get(name)
-    }
-  }
-
-  resizeTextarea()
 })
 
 function submit() {
@@ -148,10 +153,7 @@ function submit() {
     return
   }
 
-  fetchJSON(clientRequestURL.value)
-    .then(async res => {
-      return tabular.value ? res.json() : res.text()
-    })
+  fetchAPI(clientRequestURL.value)
     .then(data => {
       const result = { url: apiRequestURL.value, count: 0 }
       if (tabular.value) {
@@ -214,7 +216,7 @@ function submit() {
             </div>
           </div>
           <div class="col-auto">
-            <button type="submit" class="btn btn-primary" :disabled="loading">Abfragen</button>
+            <button type="submit" class="btn btn-primary">Abfragen</button>
           </div>
           <div class="col-auto">
             <div class="form-check form-switch">

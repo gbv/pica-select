@@ -15,7 +15,10 @@ const api = import.meta.env.MODE === "production" ? "." : "http://localhost:5000
 
 <template>
   <PicaSelectQuery :api="api" v-model="result" class="container pica-select-search"/>
-  <section v-if="result.error" class="container alert alert-danger">
+  <section v-if="result.loading" class="container alert alert-info">
+    Bitte warten...
+  </section>
+  <section v-else-if="result.error" class="container alert alert-danger">
     <a v-if="result.error.url" class="float-end alert-link" :href="result.error.url">API</a>
     Fehler {{result.error.status || 500}}: {{result.error.message}}
   </section>
