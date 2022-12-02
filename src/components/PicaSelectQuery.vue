@@ -89,7 +89,7 @@ watch([dbkey, format, query, level, select, reduce, separator, delimit, filter],
 })
 
 const fetchAPI = async url => {
-  emit("update:modelValue", { loading: true })
+  emit("update:modelValue", { loading: true, url })
   return fetch(url)
     .then(async res => {
       var json
