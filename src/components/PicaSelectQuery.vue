@@ -15,7 +15,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 // set via API endpoint /status
-const databases = ref({})
+const databases = ref(undefined)
 
 // query/form fields
 const dbkey = ref(undefined)
@@ -89,44 +89,54 @@ watch([dbkey, format, query, level, select, reduce, separator, delimit, filter],
   clientRequestURL.value = `${props.api}/select?${new URLSearchParams(fields)}`
 })
 
-const fetchLoading = async url => {
+const fetchJSON = async url => {
   loading.value = true
-  return fetch(url).then(res => {
-    loading.value = false
-    return res
-  })
+  return fetch(url)
+    .catch(e => {
+      loading.value = false
+      throw { message: "API nicht erreichbar!", url }
+    })
+    .then(async res => {
+      loading.value = false
+      var json
+      try {
+        json = await res.json()
+      } catch {
+        throw { message: "API-Antwort ist kein JSON!", url }
+      }
+      if (res.ok) {
+        return json
+      } else {
+        throw { message: json.message, url, status: res.status }
+      }
+    })
 }
+
 
 // TODO: this is not triggered when back/forward is clicked - seems like Vue catches it?
 // window.addEventListener('popstate', () => { console.log("popstate") })
 
 onMounted(() => {
-  const url = `${props.api}/status`
-  fetchLoading(url)
+
+  // get configuration via status endpoint
+  fetchJSON(`${props.api}/status`)
     .then(res => {
-      if (res.ok) {
-        try { return res.json() } catch { } // eslint-disable-line no-empty
-      }
-      return { error: "API nicht erreichbar!" }
-    })
-    .then(res => {
-      // TODO: disable form
       selections.value = res.selections
       databases.value = res.databases || {}
       if (!dbkey.value) {
         dbkey.value = res.default_database
       }
-      if (res.error) {
-        emit("update:modelValue", { error: { message: res.error }, url })
-      }
     })
+    .catch(error => emit("update:modelValue", { error }))
 
-    const params = new URLSearchParams(window.location.search)
-    for (let name in formFields) {
-      if (params.has(name)) {
-        formFields[name].value = params.get(name)
-      }
+  // set form state from URL
+  const params = new URLSearchParams(window.location.search)
+  for (let name in formFields) {
+    if (params.has(name)) {
+      formFields[name].value = params.get(name)
     }
+  }
+
   resizeTextarea()
 })
 
@@ -138,17 +148,8 @@ function submit() {
     return
   }
 
-  fetchLoading(clientRequestURL.value)
+  fetchJSON(clientRequestURL.value)
     .then(async res => {
-      if (!res.ok) {
-        var error
-        try {
-          error = await res.json()
-        } catch {
-          error = { message: "Malformed API response", status: 500 }
-        }
-        throw error
-      }
       return tabular.value ? res.json() : res.text()
     })
     .then(data => {
@@ -163,13 +164,14 @@ function submit() {
       emit("update:modelValue", result)
     })
     .catch(error => {
-      emit("update:modelValue", { url: apiRequestURL.value, error })
+      error.url = apiRequestURL.value 
+      emit("update:modelValue", { error })
     })
 }
 </script>
 
-<template>
-  <form :action="`${api}/select`" method="get" v-on:submit.prevent="submit">
+<template>  
+  <form :action="`${api}/select`" method="get" v-on:submit.prevent="submit" v-if="databases">
     <table>
       <tr>
         <th>
@@ -250,7 +252,7 @@ function submit() {
                 Syntax pro Zeile <code>Name: Feld $codes</code>
               </div>
             </div>
-            <div class="col-auto">
+            <div class="col-auto" v-if="selections && selections.length">
               <button 
                  type="button" class="btn btn-secondary"
                 @click='select += selections.join("\n")+"\n"'

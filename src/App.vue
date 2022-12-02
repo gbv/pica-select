@@ -14,12 +14,10 @@ const api = import.meta.env.MODE === "production" ? "." : "http://localhost:5000
 </script>
 
 <template>
-  <section class="container">
-    <PicaSelectQuery :api="api" v-model="result" class="pica-select-search"/>
-  </section>
+  <PicaSelectQuery :api="api" v-model="result" class="container pica-select-search"/>
   <section v-if="result.error" class="container alert alert-danger">
-    <a v-if="result.url" class="float-end alert-link" :href="result.url">API</a>
-    Fehler {{result.error.status}}: {{result.error.message}}
+    <a v-if="result.error.url" class="float-end alert-link" :href="result.error.url">API</a>
+    Fehler {{result.error.status || 500}}: {{result.error.message}}
   </section>
   <section v-else-if="result.url" class="container">      
     <div class="float-end" v-if="result.table">
@@ -59,7 +57,7 @@ const api = import.meta.env.MODE === "production" ? "." : "http://localhost:5000
 .alert {
   border: none;
 }
-section.container {
+section.container, .pica-select-search{
   padding: 1rem;
   margin-bottom: 1rem;
   border-radius: 0;
