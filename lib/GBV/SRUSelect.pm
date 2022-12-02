@@ -16,7 +16,7 @@ use List::Util      qw(any all);
 use Plack::Util::Accessor qw(databases default_database);
 
 sub json {
-    return [ JSON->new->utf8->allow_blessed->encode(shift) ];
+    return [ to_json( shift, { utf8 => 1, allow_blessed => 1, @_ } ) ];
 }
 
 sub path {
@@ -153,7 +153,8 @@ sub select {
             }
 
             if ( $format eq 'table' ) {
-                $res->body( json( { fields => \@fields, rows => \@rows } ) );
+                my $table = { fields => \@fields, rows => \@rows };
+                $res->body( json( $table, pretty => @rows < 100 ) );
             }
             else {
                 my $body = '';
@@ -178,7 +179,7 @@ sub select {
         my ( $code, $msg ) = ref $_ ? @$_ : ( 500, $_ );
         $msg =~ s/ at .+ line .+//sm unless $debug;
         $res->code($code);
-        $res->body( json( { message => $msg, status => $code } ) );
+        $res->body( json( { message => $msg, status => $code }, pretty => 1 ) );
     };
 
     return $res->finalize;
