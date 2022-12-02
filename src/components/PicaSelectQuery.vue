@@ -92,17 +92,21 @@ const fetchAPI = async url => {
   emit("update:modelValue", { loading: true, url })
   return fetch(url)
     .then(async res => {
-      var json
+      var data
       try {
-        json = await res.json()
+        if (res.headers.get("content-type").match(/^text/)) {
+          data = await res.text()
+        } else {
+          data = await res.json()
+        }
       } catch {
         throw { message: "API-Antwort ist kein JSON!", url }
       }
 
       if (res.ok) {
-        return json
+        return data
       } else {
-        throw { message: json.message, url, status: res.status }
+        throw { message: data.message, url, status: res.status }
       }
     })
     .catch(e => {
