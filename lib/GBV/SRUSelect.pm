@@ -81,7 +81,7 @@ sub select {
 
         my $format = $params->{format} || 'plain';
         die "Format not supported"
-          if $format !~ /^(json|plain|plus|tsv|csv|ods|table)$/;
+          if $format !~ /^(json|plain|plus|tsv|csv|table)$/;
 
         my $level;
         if ( my $l = $params->{level} ) {
@@ -118,12 +118,10 @@ sub select {
             $writer->write($_) for @$records;
             $writer->end;
             $res->header( 'Content-Type' => 'text/plain; encoding=UTF-8' );
-
-            # TODO: decode UTF-8? use iterator instead?
             $body =~ s/\n+$/\n/s;
             $res->body( [$body] );
         }
-        elsif ( $format =~ /^(tsv|csv|ods|table)$/ ) {
+        elsif ( $format =~ /^(tsv|csv|table)$/ ) {
             my @lines = grep { $_ } map { s/^\s+|\s+$//mgr; } split "\n",
               $params->{select} // '';
             ## no critic
@@ -167,7 +165,7 @@ sub select {
                         'Content-Type' => 'text/tab-separated-values' );
                     exporter( TSV => @opts )->add_many( \@rows );
                 }
-                else {    # TODO: support ODS with OpenOffice::OODoc
+                else {
                     $res->header( 'Content-Type' => 'text/csv' );
                     exporter( CSV => @opts )->add_many( \@rows );
                 }

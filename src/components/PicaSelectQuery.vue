@@ -338,10 +338,6 @@ const shellEscape = arg => `'${arg.replace(/'/g, `'\\''`)}'`
                   <input class="form-check-input" type="radio" name="format" id="format-tsv" value="tsv" v-model="format">
                   <label class="form-check-label" for="format-tsv">TSV</label>
                 </div>
-                <div class="form-check form-check-inline" @click.left="format='ods'">
-                  <input class="form-check-input" type="radio" name="format" id="format-ods" value="ods" v-model="format" disabled>
-                  <label class="form-check-label" for="format-ods">Spreadsheet</label>
-                </div>
                 <div class="form-check form-check-inline" @click.left="format='table'">
                   <input class="form-check-input" type="radio" name="format" id="format-table" value="table" v-model="format">
                   <label class="form-check-label" for="format-table">JSON Table</label>
