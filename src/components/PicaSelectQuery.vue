@@ -110,7 +110,8 @@ const fetchAPI = async url => {
       }
     })
     .catch(e => {
-      throw { message: e.message || "API nicht erreichbar!", url }
+      const message = e.message == "Failed to fetch" ? "API nicht erreichbar" : e.message
+      throw { message, url }
     })
 }
 
