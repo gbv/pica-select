@@ -13,6 +13,7 @@
     "eslint": "^8.22.0",
     "eslint-plugin-vue": "^9.3.0",
     "prismjs": "^1.29.0",
+    "v-onboarding": "^2.2.0",
     "vite": "^3.0.9",
     "vue": "^3.2.38"
   }
