@@ -10,8 +10,8 @@ use Catmandu::Importer::SRU;
 use Try::Tiny;
 use PICA::Data ':all';
 use JSON;
-use Encode::Unicode qw(encode);
-use List::Util      qw(any all);
+use Encode     qw(decode);
+use List::Util qw(any all);
 
 use Plack::Util::Accessor qw(databases default_database);
 
@@ -71,6 +71,7 @@ sub select {
     my ( $self, $params ) = @_;
 
     my $debug = $params->{debug};
+    $params->{$_} = decode( 'UTF-8', $params->{$_} ) for %$params;
 
     my $res =
       Plack::Response->new( 200, [ 'Content-Type' => 'application/json' ] );
