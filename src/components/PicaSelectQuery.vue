@@ -19,7 +19,7 @@ const databases = ref(undefined)
 
 // query/form fields
 const dbkey = ref(undefined)
-const format = ref("pp")
+const format = ref("plain")
 const query = ref("")
 const level = ref("0")
 const select = ref("")
@@ -36,6 +36,7 @@ const browser = ref(true)
 const apiRequestURL = ref("")
 const clientRequestURL = ref("")
 const tabular = ref(false)
+const cliCommand = ref("")
 
 // TODO: use as help
 const filterFields = {
@@ -62,7 +63,8 @@ watch(select, resizeTextarea)
 watch([dbkey, format, query, level, select, reduce, separator, delimit, filter],
   ([dbkey, format, query, level, select, reduce, separator, delimit, filter]) => {
 
-  tabular.value = format.match(/^(csv|tsv|ods|table)$/)
+  const isTabular = format.match(/^(csv|tsv|ods|table)$/)
+  tabular.value = isTabular
 
   const fields = { dbkey, format, query }
   if (level != "0") {
@@ -71,7 +73,7 @@ watch([dbkey, format, query, level, select, reduce, separator, delimit, filter],
   if (filter.trim() !== "") {
     fields.filter = filter
   }
-  if (tabular.value) {
+  if (isTabular) {
     if (delimit) {
       fields.separator = separator
     }
@@ -84,8 +86,24 @@ watch([dbkey, format, query, level, select, reduce, separator, delimit, filter],
   apiRequestURL.value = `${props.api}/select?${params}`
   window.history.replaceState({}, "", `?${params}`)
 
-  fields.format = tabular.value ? 'table' : 'pp'
+  fields.format = isTabular ? 'table' : 'plain'
   clientRequestURL.value = `${props.api}/select?${new URLSearchParams(fields)}`
+
+
+/*
+  const db = databases.value[dbkey]
+  if (db && query) {
+    cliCommand.value = `catmandu convert SRU --base ${db.srubase} --recordSchema picaxml --parser picaxml \\
+                     --query ${shellEscape(query)} ` 
+    // TODO: total => $limit
+    if (isTabular) {
+    } else {
+      cliCommand.value += `to PICA --type ${format}`
+    }
+  } else {
+    cliCommand.value = ""
+  }
+*/
 })
 
 const fetchAPI = async url => {
@@ -101,7 +119,7 @@ const fetchAPI = async url => {
         }
       } catch {
         throw { message: "API-Antwort ist kein JSON!", url }
-      }
+      } 
 
       if (res.ok) {
         return data
@@ -175,6 +193,8 @@ function submit() {
       emit("update:modelValue", { error })
     })
 }
+
+const shellEscape = arg => `'${arg.replace(/'/g, `'\\''`)}'`
 </script>
 
 <template>  
@@ -287,13 +307,13 @@ function submit() {
           <table>
             <tr>
               <td>
-               <div class="form-check form-check-inline" @click.left="format='pp'">
-                  <input class="form-check-input" type="radio" name="format" id="format-pp" value="pp" v-model="format">
-                  <label class="form-check-label" for="format-pp">PICA Plain</label>
+               <div class="form-check form-check-inline" @click.left="format='plain'">
+                  <input class="form-check-input" type="radio" name="format" id="format-plain" value="plain" v-model="format">
+                  <label class="form-check-label" for="format-plain">PICA Plain</label>
                 </div>
-                <div class="form-check form-check-inline" @click.left="format='norm'">
-                  <input class="form-check-input" type="radio" name="format" id="format-norm" value="norm" v-model="format">
-                  <label class="form-check-label" for="format-norm">Normalisiert</label>
+                <div class="form-check form-check-inline" @click.left="format='plus'">
+                  <input class="form-check-input" type="radio" name="format" id="format-plus" value="plus" v-model="format">
+                  <label class="form-check-label" for="format-plus">Normalisiert</label>
                 </div>
                 <div class="form-check form-check-inline" @click.left="format='json'">
                   <input class="form-check-input" type="radio" name="format" id="format-json" value="json" v-model="format">
@@ -329,6 +349,14 @@ function submit() {
               </td>
             </tr>
           </table>
+        </td>
+      </tr>
+      <tr v-if="cliCommand">
+        <th>
+          <label>Kommandozeile</label>
+        </th>
+        <td>
+          <pre><code>{{cliCommand}}</code></pre>
         </td>
       </tr>
     </table>

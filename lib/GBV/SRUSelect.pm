@@ -79,9 +79,9 @@ sub select {
         my $cql = $params->{query};
         my $db  = $params->{db};
 
-        my $format = $params->{format} || 'pp';
+        my $format = $params->{format} || 'plain';
         die "Format not supported"
-          if $format !~ /^(json|pp|norm|tsv|csv|ods|table)$/;
+          if $format !~ /^(json|plain|plus|tsv|csv|ods|table)$/;
 
         my $level;
         if ( my $l = $params->{level} ) {
@@ -111,8 +111,8 @@ sub select {
         if ( $format eq 'json' ) {
             $res->body( json($records) );
         }
-        elsif ( $format eq 'pp' || $format eq 'norm' ) {
-            $format = $format eq 'pp' ? 'plain' : 'plus';
+        elsif ( $format eq 'plain' || $format eq 'plus' ) {
+            $format = $format eq 'plain' ? 'plain' : 'plus';    # FIXME
             my $body   = "";
             my $writer = pica_writer( $format, \$body );
             $writer->write($_) for @$records;
