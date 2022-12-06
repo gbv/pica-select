@@ -17,20 +17,20 @@ sub query {
     return join '', @{$backend->select(\%query)->[2]};
 }
 
-my $pp = query(format => 'pp');
+my $pp = query(format => 'plain');
 my $res = importer('PICA', type => 'plain', fh => \$pp);
-is @{$res->to_array}, 3, 'format=pp';
+is @{$res->to_array}, 3, 'format=plain';
 
-my $ppns = query(format => 'pp', reduce=>'003@');
+my $ppns = query(format => 'plain', reduce=>'003@');
 is $ppns, "003@ \$01030386986\n\n003@ \$0161165839X\n\n003@ \$0786718889\n", "ppns";
 
-my $norm = query(format => 'norm', level => '1');
-$res = importer('PICA', type => 'plus', fh => \$norm);
-is @{$res->to_array}, 6, 'format=norm, level=1';
+my $plus = query(format => 'plus', level => '1');
+$res = importer('PICA', type => 'plus', fh => \$plus);
+is @{$res->to_array}, 6, 'format=plus, level=1';
 
 my $json = query(format => 'json', level => '2');
 $res = decode_json($json);
-is @$res, 7, 'format=norm, level=2';
+is @$res, 7, 'format=json, level=2';
 
 my $tsv = query(format => 'tsv', select => "ppn: 003@ \$0\n lang:010@\$ac\n" );
 is $tsv, "ppn\tlang\n1030386986\tger\n161165839X\tger\n786718889\tger\n", "tsv";
