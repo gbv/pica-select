@@ -12,11 +12,11 @@ use PICA::Data ':all';
 use JSON;
 use Encode     qw(decode);
 use List::Util qw(any all);
-
+use GBV::PICASelector;
 use Plack::Util::Accessor qw(databases default_database);
 
 sub json {
-    return [ to_json( shift, { utf8 => 1, allow_blessed => 1, @_ } ) ];
+    return [ to_json( shift, { utf8 => 1, convert_blessed => 1, @_ } ) ];
 }
 
 sub path {
@@ -62,114 +62,122 @@ sub filter {
     }
 }
 
-sub call {
-    my ( $self, $env ) = @_;
-    return $self->select( Plack::Request->new($env)->query_parameters );
+sub tabular {
+    my ( $recs, $select, $separator ) = @_;
+
+    my @cols = try {
+        my @lines = grep { $_ !~ qr{^\s*(\#.*)?$} } split "\n", $select // '';
+        ## no critic
+        map {
+            $_ =~ s/^\s+|\s+$//g;
+            $_ =~ s/\s+\$/\$/;
+            $_ = ~/^(([^: ]+):)?\s*(.+)/;
+            { name => $2 || $3, value => GBV::PICASelector->new($3) };
+        } @lines;
+    };
+
+    die [ 400, "Bitte eine Auswahl pro Zeile der Form '(Name:) Feld \$codes'" ]
+      unless @cols;
+
+    my @rows;
+    for my $rec (@$recs) {
+        my %row;
+        for my $f (@cols) {
+            my $value =
+              defined $separator
+              ? join $separator, $f->{value}->select_all($rec)
+              : $f->{value}->select_first($rec);
+            $row{ $f->{name} } = $value // "";
+        }
+        push @rows, \%row;
+    }
+
+    return {
+        fields => \@cols,
+        rows   => \@rows
+    };
 }
 
-sub select {
-    my ( $self, $params ) = @_;
+sub call {
+    my ( $self, $env ) = @_;
+    return $self->request( Plack::Request->new($env)->query_parameters );
+}
 
-    my $debug = $params->{debug};
-    $params->{$_} = decode( 'UTF-8', $params->{$_} ) for %$params;
+sub request {
+    my ( $self, $param ) = @_;
+
+    my $debug = $param->{debug};
+    $param->{$_} = decode( 'UTF-8', $param->{$_} ) for %$param;
 
     my $res =
       Plack::Response->new( 200, [ 'Content-Type' => 'application/json' ] );
 
     try {
-        my $cql = $params->{query};
-        my $db  = $params->{db};
+        my $cql = $param->{query};
+        my $db  = $param->{db};
 
-        my $format = $params->{format} || 'plain';
-        die "Format not supported"
+        my $format = $param->{format} || 'plain';
+        die "Format wird nicht unterstützt"
           if $format !~ /^(json|plain|plus|tsv|csv|table)$/;
 
         my $level;
-        if ( my $l = $params->{level} ) {
+        if ( my $l = $param->{level} ) {
             die [ 400, "Level darf nur 0, 1 oder 2 sein!\n" ]
               if $l !~ /^[012]$/;
             $level = sub { return pica_split( $_[0], $l ) };
         }
 
         my $reduce;
-        if ( my $r = $params->{reduce} =~ s/\s+//mgr ) {
+        if ( my $r = $param->{reduce} =~ s/\s+//mgr ) {
             $r      = [ map { path( $_, 0 ) } split /[|,]+/, $r ];
             $reduce = sub {
                 return pica_fields( $_[0], @$r );
             };
         }
 
-        my $filter = $params->{filter} =~ s/\s+|\s+//gr;
+        my $filter = $param->{filter} =~ s/\s+|\s+//gr;
         $filter = filter($filter) if $filter;
 
-        my $records = $self->query( db => $db, cql => $cql );
+        my $recs = $self->query( db => $db, cql => $cql );
 
-        $records = $records->map($level)     if $level;
-        $records = $records->select($filter) if $filter;
-        $records = $records->map($reduce)    if $reduce;
-        $records = $records->to_array;
+        $recs = $recs->map($level)     if $level;
+        $recs = $recs->select($filter) if $filter;
+        $recs = $recs->map($reduce)    if $reduce;
+        $recs = $recs->to_array;
 
         if ( $format eq 'json' ) {
-            $res->body( json($records) );
+            $res->body( json($recs) );
         }
-        elsif ( $format eq 'plain' || $format eq 'plus' ) {
-            $format = $format eq 'plain' ? 'plain' : 'plus';    # FIXME
+        elsif ( $format =~ /^(plain|plus)$/ ) {
             my $body   = "";
             my $writer = pica_writer( $format, \$body );
-            $writer->write($_) for @$records;
+            $writer->write($_) for @$recs;
             $writer->end;
             $res->header( 'Content-Type' => 'text/plain; encoding=UTF-8' );
-            $body =~ s/\n+$/\n/s;
+            $body =~ s/\n+$/\n/s;  # FIXME: pica_writer emits additional newline
             $res->body( [$body] );
         }
         elsif ( $format =~ /^(tsv|csv|table)$/ ) {
-            my @lines = grep { $_ } map { s/^\s+|\s+$//mgr; } split "\n",
-              $params->{select} // '';
-            ## no critic
-            my @fields = grep { $_ } map {
-                $_ =~ s/\s+\$/\$/;
-                $_ = ~/^(([\p{L}0-9_-]+):)?\s*(.+)/;
-                { name => $2 || $3, value => "" . path( $3, 1 ) };
-            } @lines;
-
-            die [ 400,
-                "Bitte eine Auswahl pro Zeile der Form '(Name:) Feld \$codes'" ]
-              unless @fields && @fields == @lines;
-
-            my $separator = $params->{separator};
-            my $extract =
-              defined $separator
-              ? sub { join $separator, pica_values(@_) }
-              : sub { pica_value(@_) };
-
-            my @rows;
-            for my $rec (@$records) {
-                my %row;
-                for my $f (@fields) {
-                    $row{ $f->{name} } = $extract->( $rec, $f->{value} ) // "";
-                }
-                push @rows, \%row;
-            }
+            my $table =
+              tabular( $recs, $param->{select}, $param->{separator} );
 
             if ( $format eq 'table' ) {
-                my $table = { fields => \@fields, rows => \@rows };
-                $res->body( json( $table, pretty => @rows < 100 ) );
+                $res->body(
+                    json( $table, pretty => @{ $table->{rows} } < 100 ) );
             }
             else {
                 my $body = '';
                 my @opts = (
                     file   => \$body,
-                    fields => [ map { $_->{name} } @fields ]
+                    fields => [ map { $_->{name} } @{ $table->{fields} } ]
                 );
-                if ( $format eq 'tsv' ) {
-                    $res->header(
-                        'Content-Type' => 'text/tab-separated-values' );
-                    exporter( TSV => @opts )->add_many( \@rows );
-                }
-                else {
-                    $res->header( 'Content-Type' => 'text/csv' );
-                    exporter( CSV => @opts )->add_many( \@rows );
-                }
+                exporter( uc $format, @opts )->add_many( $table->{rows} );
+
+                $res->header(
+                      'Content-Type' => $format eq 'tsv'
+                    ? 'text/tab-separated-values'
+                    : 'text/csv'
+                );
                 $res->body( [$body] );
             }
         }
@@ -185,19 +193,17 @@ sub select {
 }
 
 sub query {
-    my ( $self, %params ) = @_;
+    my ( $self, %param ) = @_;
 
-    my $db = $self->databases->{ $params{db} || $self->{default_database} }
+    my $db = $self->databases->{ $param{db} || $self->{default_database} }
       or die [ 400, "Unbekannte oder fehlende Datenbank" ];
 
-    my $cql = $params{cql}
-      or die [ 400, "Fehlende CQL-Abfrage" ];
+    my $cql = $param{cql} or die [ 400, "Fehlende CQL-Abfrage" ];
 
-    my $limit = $params{limit};
-    $limit = 10 if !( $limit > 0 ) || $limit > 100;
+    my $limit = $param{limit} || 10;
+    $limit = 1000 if $limit > 1000;
 
-    # TODO: optionally add xpn, user, password...
-    # TODO: add X-Total-Count header
+    # TODO: optionally add xpn, user, password?
 
     return Catmandu::Importer::SRU->new(
         base         => $db->{srubase},
