@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUpdated, computed, watch, nextTick } from 'vue'
 
+import HelpLink from './HelpLink.vue'
 import OnboardingComponent from './OnboardingComponent.vue'
 import { onboarding } from './onboarding.js'
 
@@ -318,14 +319,17 @@ const shellEscape = arg => `'${arg.replace(/'/g, `'\\''`)}'`
                <div class="form-check form-check-inline" @click.left="format='plain'">
                   <input class="form-check-input" type="radio" name="format" id="format-plain" value="plain" v-model="format">
                   <label class="form-check-label" for="format-plain">PICA Plain</label>
+                  <HelpLink href="http://format.gbv.de/pica/plain"/>
                 </div>
                 <div class="form-check form-check-inline" @click.left="format='plus'">
                   <input class="form-check-input" type="radio" name="format" id="format-plus" value="plus" v-model="format">
-                  <label class="form-check-label" for="format-plus">Normalisiert</label>
+                  <label class="form-check-label" for="format-plus">Normalisiertes PICA</label>
+                  <HelpLink href="http://format.gbv.de/pica/normalized"/>
                 </div>
                 <div class="form-check form-check-inline" @click.left="format='json'">
                   <input class="form-check-input" type="radio" name="format" id="format-json" value="json" v-model="format">
-                  <label class="form-check-label" for="format-json">PICA/JSON</label>
+                  <label class="form-check-label" for="format-json">PICA JSON</label>
+                  <HelpLink href="http://format.gbv.de/pica/json"/>
                 </div>
               </td>
               <td rowspan="2" v-if="tabular">
