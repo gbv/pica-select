@@ -203,8 +203,6 @@ sub query {
     my $limit = $param{limit} || 10;
     $limit = 1000 if $limit > 1000;
 
-    # TODO: optionally add xpn, user, password?
-
     return Catmandu::Importer::SRU->new(
         base         => $db->{srubase},
         version      => '1.1',

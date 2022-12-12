@@ -22,7 +22,7 @@ const emit = defineEmits(['update:modelValue'])
 const databases = ref(undefined)
 
 // query/form fields
-const dbkey = ref(undefined)
+const db = ref(undefined)
 const format = ref("plain")
 const query = ref("")
 const level = ref("0")
@@ -31,7 +31,7 @@ const reduce = ref("")
 const separator = ref("; ")
 const delimit = ref(false)
 const filter = ref("") // TODO: compute from ILN and SST
-const formFields = { dbkey, format, query, level, select, reduce, separator, delimit, filter }
+const formFields = { db, format, query, level, select, reduce, separator, delimit, filter }
 
 // additional form fields and calculated values
 const selections = ref([])
@@ -64,13 +64,13 @@ function resizeTextarea() {
 watch(select, resizeTextarea)
 
 // called when any query/form field changes
-watch([dbkey, format, query, level, select, reduce, separator, delimit, filter],
-  ([dbkey, format, query, level, select, reduce, separator, delimit, filter]) => {
+watch([db, format, query, level, select, reduce, separator, delimit, filter],
+  ([db, format, query, level, select, reduce, separator, delimit, filter]) => {
 
   const isTabular = format.match(/^(csv|tsv|ods|table)$/)
   tabular.value = isTabular
 
-  const fields = { dbkey, format, query }
+  const fields = { db, format, query }
   if (level != "0") {
     fields.level = level
   }
@@ -95,7 +95,7 @@ watch([dbkey, format, query, level, select, reduce, separator, delimit, filter],
 
 
 /*
-  const db = databases.value[dbkey]
+  const db = databases.value[db]
   if (db && query) {
     cliCommand.value = `catmandu convert SRU --base ${db.srubase} --recordSchema picaxml --parser picaxml \\
                      --query ${shellEscape(query)} ` 
@@ -164,8 +164,8 @@ onMounted(() => {
     .then(res => {
       selections.value = res.selections
       databases.value = res.databases || {}
-      if (!dbkey.value) {
-        dbkey.value = res.default_database
+      if (!db.value) {
+        db.value = res.default_database
       }
       setFormFromURL()
       if (!query.value) {
@@ -216,7 +216,7 @@ const shellEscape = arg => `'${arg.replace(/'/g, `'\\''`)}'`
         <td style="width:100%">
           <div class="row align-items-top">
             <div class="col-5">
-              <select name="database" class="form-control" v-model="dbkey" id="database">
+              <select name="database" class="form-control" v-model="db" id="database">
                 <option disabled value="">Bitte auswählen</option>
                 <option v-for="(db,key) of databases" :value="key" :key="key">
                   {{db.title.de || db.title.en || key}}
@@ -224,7 +224,7 @@ const shellEscape = arg => `'${arg.replace(/'/g, `'\\''`)}'`
               </select>
             </div>
             <div class="col-5">
-              <a :href="databases[dbkey].url" v-if="databases[dbkey]">{{databases[dbkey].url}}</a>
+              <a :href="databases[db].url" v-if="databases[db]">{{databases[db].url}}</a>
             </div>
             <div class="col-2">
               <a @click="onboarding.start()" href="#" style="padding-right: 0.5em">Hilfe</a>

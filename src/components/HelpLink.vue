@@ -4,13 +4,12 @@ defineProps({ href: { type: String, required: true } })
 
 <template>
   <a :href="href" title="Hilfe" class="help-link" target="_blank">
-    🛈 
+      <small><sup>?</sup></small>
   </a>
 </template> 
 
 <style>
 .help-link {
   text-decoration: none;
-  margin-left: -0.3em;
 }
 </style>

@@ -7,6 +7,20 @@
       "url": "https://opac.k10plus.de/",
       "srubase": "http://sru.k10plus.de/opac-de-627"
     },
+    "k10plus-online": {
+      "title": {
+        "de": "K10plus-Verbundkatalog (Online-Expansion)"
+      },
+      "url": "https://opac.k10plus.de/",
+      "srubase": "http://sru.bsz-bw.de/swb-290!xpn=online"
+    },
+    "k10plus-offline": {
+      "title": {
+        "de": "K10plus-Verbundkatalog (Offline-Expansion)"
+      },
+      "url": "https://opac.k10plus.de/",
+      "srubase": "http://sru.bsz-bw.de/swb-290!xpn=offline"
+    },
     "opac-de-1": {
       "title": {
         "de": "Online-Katalog der Staatsbibliothek zu Berlin"
