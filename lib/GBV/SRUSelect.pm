@@ -86,7 +86,7 @@ sub tabular {
             my $value =
               defined $separator
               ? join $separator, $f->{value}->select_all($rec)
-              : $f->{value}->select_first($rec);
+              : $f->{value}->select($rec);
             $row{ $f->{name} } = $value // "";
         }
         push @rows, \%row;
