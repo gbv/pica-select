@@ -93,8 +93,8 @@ sub tabular {
     }
 
     return {
-        fields => \@cols,
-        rows   => \@rows
+        columns => \@cols,
+        rows    => \@rows
     };
 }
 
@@ -169,7 +169,7 @@ sub request {
                 my $body = '';
                 my @opts = (
                     file   => \$body,
-                    fields => [ map { $_->{name} } @{ $table->{fields} } ]
+                    fields => [ map { $_->{name} } @{ $table->{columns} } ]
                 );
                 exporter( uc $format, @opts )->add_many( $table->{rows} );
 

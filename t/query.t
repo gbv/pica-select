@@ -38,7 +38,7 @@ is $tsv, "ppn\tlang\n1030386986\tger\n161165839X\tger\n786718889\tger\n", "tsv";
 my $table = query(format => 'table', select => "ppn: 003@\$0\n032@\$a\n" );
 is_deeply explain decode_json($table),
    {
-      fields => [
+      columns => [
         { name => 'ppn', value => '003@$0' },
         { name => '032@$a', value => '032@$a' }
       ],
