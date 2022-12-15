@@ -23,6 +23,7 @@ const databases = ref(undefined)
 
 // query/form fields
 const db = ref(undefined)
+const iln = ref("")
 const format = ref("plain")
 const query = ref("")
 const level = ref("0")
@@ -30,8 +31,8 @@ const select = ref("")
 const reduce = ref("")
 const separator = ref("; ")
 const delimit = ref(false)
-const filter = ref("") // TODO: compute from ILN and SST
-const formFields = { db, format, query, level, select, reduce, separator, delimit, filter }
+const filter = ref("")
+const formFields = { db, iln, format, query, level, select, reduce, separator, delimit, filter }
 
 // additional form fields and calculated values
 const selections = ref([])
@@ -41,12 +42,6 @@ const apiRequestURL = ref("")
 const clientRequestURL = ref("")
 const tabular = ref(false)
 const cliCommand = ref("")
-
-// TODO: use as help
-const filterFields = {
-  sst: { name: "Sonderstandort", pica: "" },
-  iln: { name: "ILN", pica: "" }
-}
 
 watch(addSelection, value => {
   if (value !== "") {
@@ -64,13 +59,16 @@ function resizeTextarea() {
 watch(select, resizeTextarea)
 
 // called when any query/form field changes
-watch([db, format, query, level, select, reduce, separator, delimit, filter],
-  ([db, format, query, level, select, reduce, separator, delimit, filter]) => {
+watch([db, iln, format, query, level, select, reduce, separator, delimit, filter],
+  ([db, iln, format, query, level, select, reduce, separator, delimit, filter]) => {
 
   const isTabular = format.match(/^(csv|tsv|ods|table)$/)
   tabular.value = isTabular
 
   const fields = { db, format, query }
+  if (iln) {
+    fields.iln = iln
+  }
   if (level != "0") {
     fields.level = level
   }
@@ -222,9 +220,16 @@ const shellEscape = arg => `'${arg.replace(/'/g, `'\\''`)}'`
                   {{db.title.de || db.title.en || key}}
                 </option>
               </select>
+              <div v-if="databases[db]">
+                <a :href="databases[db].url">{{databases[db].url}}</a>                
+                <a :href="databases[db].srubase" style="padding-left: 1em;">SRU</a>
+              </div>
             </div>
             <div class="col-5">
-              <a :href="databases[db].url" v-if="databases[db]">{{databases[db].url}}</a>
+              <input type="text" name="iln" class="form-control" style="width: 5em" v-model="iln" maxlength="6" placeholder="ILN"/>
+              <div class="form-text">
+                Ergänzt Abfrage und Filter
+              </div>
             </div>
             <div class="col-2">
               <a @click="onboarding.start()" href="#" style="padding-right: 0.5em">Hilfe</a>

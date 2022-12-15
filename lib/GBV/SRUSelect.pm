@@ -113,8 +113,15 @@ sub request {
       Plack::Response->new( 200, [ 'Content-Type' => 'application/json' ] );
 
     try {
-        my $cql = $param->{query};
-        my $db  = $param->{db};
+        my $db     = $param->{db};
+        my $cql    = $param->{query} or die [ 400, "Fehlende CQL-Abfrage" ];
+        my $filter = $param->{filter} =~ s/\s+|\s+//gr;
+
+        if ( my $iln = $param->{iln} ) {
+            $cql = "pica.iln=$iln and ($cql)";
+        }
+
+        say STDERR $cql;
 
         my $format = $param->{format} || 'plain';
         die "Format wird nicht unterstützt"
@@ -135,7 +142,6 @@ sub request {
             };
         }
 
-        my $filter = $param->{filter} =~ s/\s+|\s+//gr;
         $filter = filter($filter) if $filter;
 
         my $recs = $self->query( db => $db, cql => $cql );
@@ -198,17 +204,16 @@ sub query {
     my $db = $self->databases->{ $param{db} || $self->{default_database} }
       or die [ 400, "Unbekannte oder fehlende Datenbank" ];
 
-    my $cql = $param{cql} or die [ 400, "Fehlende CQL-Abfrage" ];
-
     my $limit = $param{limit} || 10;
     $limit = 1000 if $limit > 1000;
 
+    # TODO catch errors such as "Query feature unsupported"
     return Catmandu::Importer::SRU->new(
         base         => $db->{srubase},
         version      => '1.1',
         recordSchema => 'picaxml',
         parser       => 'picaxml',
-        query        => $cql,
+        query        => $param{cql},
         total        => $limit,
     );
 }
