@@ -13,7 +13,10 @@ my $backend = GBV::SRUSelect->new($config);
 
 sub query {
     my (%query) = @_;
-    *GBV::SRUSelect::query = sub { importer('PICA', type => 'plain', fh => "t/example.pp") };
+    $query{query} = "test";
+    *GBV::SRUSelect::query = sub {
+        importer('PICA', type => 'plain', fh => "t/example.pp")
+    };
     return join '', @{$backend->request(\%query)->[2]};
 }
 
