@@ -38,6 +38,10 @@ Zur dauerhaften Installation als Service gibt es verschiedene Möglichkeiten, di
     sudo systemctl enable pica-select
     sudo systemctl start pica-select
 
+Nach Aktualisierung der Quellen muss der Service neu gestartet werden:
+
+    sudo systemctl restart pica-select
+
 ## Benutzung
 
 ### API
