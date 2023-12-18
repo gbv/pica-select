@@ -6,7 +6,7 @@ run:
 	plackup -r
 
 dev:
-	plackup -r & npm run dev
+	(trap 'kill 0' SIGINT; npm run dev & plackup -r)
 
 build:
 	npm run build
